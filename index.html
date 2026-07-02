@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supervisor · 考公陪跑台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="brand">SUPERVISOR<span class="brand-sub">考公陪跑台</span></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="plan">项目管理</button>
+    <button class="tab" data-tab="rewards">奖励机制</button>
+    <button class="tab" data-tab="track">学习轨迹</button>
+    <button class="tab" data-tab="board">留言板</button>
+  </nav>
+  <div class="header-right">
+    <span class="badge" id="demo-badge" hidden>本地数据</span>
+    <label class="sup-toggle"><input type="checkbox" id="supervisor-toggle"><span>监督员模式</span></label>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ 项目管理 ============ -->
+  <section class="panel active" id="tab-plan">
+
+    <div class="stat-row">
+      <div class="stat-tile">
+        <div class="stat-label">距笔试</div>
+        <div class="stat-value"><span id="countdown-days">–</span><span class="stat-unit">天</span></div>
+        <div class="stat-sub" id="exam-meta">—</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">当前阶段</div>
+        <div class="stat-value stat-value-text" id="current-phase">—</div>
+        <div class="stat-sub">阶段推进由监督员确认</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">今日完成</div>
+        <div class="stat-value"><span id="today-done">0</span><span class="stat-unit">/ <span id="today-total">0</span></span></div>
+        <div class="stat-sub" id="today-points">今日获得 0 / 100 分</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>阶段路线 <span class="h2-note sup-only">监督员模式下点击阶段名可设为当前阶段</span></h2>
+      <div class="phase-bar-wrap">
+        <div class="phase-bar" id="phase-bar"></div>
+      </div>
+      <ol class="phase-list" id="phase-list"></ol>
+    </div>
+
+    <div class="card">
+      <h2>今日任务 <span class="h2-note">各自安排、各自打卡;备考任务的分值由监督员赋,每日上限 100 分</span></h2>
+
+      <div class="overdue" id="overdue-wrap" hidden>
+        <div class="overdue-title">之前未完成</div>
+        <ul class="task-list" id="overdue-list"></ul>
+      </div>
+
+      <div class="allclear" id="allclear" hidden>
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="12"/><path d="M10 16.5l4 4 8-9"/></svg>
+        <span>今日全清!累计第 <b id="allclear-count">1</b> 天</span>
+      </div>
+
+      <div class="task-columns">
+        <div class="task-col">
+          <h3>备考任务</h3>
+          <ul class="task-list" id="task-list-her"></ul>
+          <p class="empty-hint" id="task-empty-her" hidden>今天还没安排,加一个吧。</p>
+          <form class="col-form" id="task-form-her">
+            <input type="text" id="task-title-her" placeholder="如:资料分析 20 题限时" required>
+            <input type="date" id="task-date-her" required>
+            <input type="number" id="task-points-her" class="sup-only" placeholder="分值" min="0" max="100" title="分值(监督员赋)">
+            <button type="submit">添加</button>
+          </form>
+        </div>
+        <div class="task-col">
+          <h3>陪跑任务</h3>
+          <ul class="task-list" id="task-list-sup"></ul>
+          <p class="empty-hint" id="task-empty-sup" hidden>监督员今天还没安排任务。</p>
+          <form class="col-form" id="task-form-sup">
+            <input type="text" id="task-title-sup" placeholder="监督员今天要做的事" required>
+            <button type="submit">添加</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="card sup-only">
+      <h2>考试设置</h2>
+      <form class="inline-form" id="settings-form">
+        <input type="text" id="exam-name" placeholder="考试名称,如:2027 国考">
+        <input type="date" id="exam-date">
+        <button type="submit">保存</button>
+      </form>
+    </div>
+
+  </section>
+
+  <!-- ============ 奖励机制 ============ -->
+  <section class="panel" id="tab-rewards">
+
+    <div class="stat-row stat-row-2">
+      <div class="stat-tile">
+        <div class="stat-label">积分余额</div>
+        <div class="stat-value stat-hero" id="points-balance">0</div>
+        <div class="stat-sub">完成任务赚积分,兑换奖品花积分</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">连续打卡</div>
+        <div class="stat-value"><span id="streak-days">0</span><span class="stat-unit">天</span></div>
+        <div class="stat-sub">当天完成至少 1 个任务算打卡</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>奖品目录 <span class="h2-note">奖品由学习者制定,分值可改,兑换后记入流水</span></h2>
+      <div class="reward-grid" id="reward-grid"></div>
+      <p class="empty-hint" id="reward-empty" hidden>目录是空的,添加一个想要的奖品吧。</p>
+      <form class="inline-form" id="reward-form">
+        <input type="text" id="reward-title" placeholder="奖品名称,如:休息半天" required>
+        <input type="number" id="reward-cost" placeholder="所需积分" min="1" required>
+        <button type="submit">添加奖品</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>积分流水</h2>
+      <table class="data-table" id="ledger-table">
+        <thead><tr><th>日期</th><th>事项</th><th>类型</th><th class="num">积分</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="empty-hint" id="ledger-empty" hidden>还没有积分记录,完成第一个任务就有了。</p>
+    </div>
+
+  </section>
+
+  <!-- ============ 学习轨迹 ============ -->
+  <section class="panel" id="tab-track">
+
+    <div class="stat-row">
+      <div class="stat-tile">
+        <div class="stat-label">累计刷题</div>
+        <div class="stat-value"><span id="cum-questions">0</span><span class="stat-unit">题</span></div>
+        <div class="stat-sub">只涨不跌</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">学习天数</div>
+        <div class="stat-value"><span id="cum-days">0</span><span class="stat-unit">天</span></div>
+        <div class="stat-sub">打过卡或刷过题都算</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-label">历史总积分</div>
+        <div class="stat-value"><span id="cum-points">0</span><span class="stat-unit">分</span></div>
+        <div class="stat-sub">兑换不扣这里的数</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>打卡热力图 <span class="h2-note">近 16 周 · 两人同日打卡累计 <b id="both-days">0</b> 天</span></h2>
+      <div class="hm-duo">
+        <div class="hm-side">
+          <div class="hm-title">备考打卡 · 连续 <b id="hm-streak-her">0</b> 天</div>
+          <div class="heatmap" id="heatmap-her"></div>
+        </div>
+        <div class="hm-side">
+          <div class="hm-title">陪跑打卡 · 连续 <b id="hm-streak-sup">0</b> 天</div>
+          <div class="heatmap" id="heatmap-sup"></div>
+        </div>
+      </div>
+      <div class="hm-legend">少
+        <span class="hm-cell lv0"></span><span class="hm-cell lv1"></span><span class="hm-cell lv2"></span><span class="hm-cell lv3"></span><span class="hm-cell lv4"></span>
+      多</div>
+    </div>
+
+    <div class="card">
+      <h2>成就墙 <span class="h2-note">由学习数据自动解锁,解锁即永久</span>
+        <button class="award-btn sup-only" id="award-ashore" hidden>颁发「一鸣惊人」</button>
+      </h2>
+      <div class="ach-bar-row">
+        <div class="ach-bar"><div class="ach-fill" id="ach-fill"></div></div>
+        <span class="ach-count" id="ach-count">已解锁 0 / 0 · 0%</span>
+      </div>
+      <div class="badge-grid" id="badge-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2>专项刷题 · 各模块正确率走势</h2>
+      <div class="chart-wrap"><canvas id="drill-chart"></canvas></div>
+      <p class="empty-hint" id="drill-chart-empty" hidden>录入几组专项练习后,这里会画出各模块正确率的走势。</p>
+    </div>
+
+    <div class="card">
+      <h2>专项刷题记录 <span class="h2-note">每组专项练习做完就记一笔,正确率自动计算</span></h2>
+      <table class="data-table" id="drill-table">
+        <thead><tr><th>日期</th><th>模块</th><th class="num">题数</th><th class="num">对</th><th class="num">正确率</th><th></th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="empty-hint" id="drill-empty" hidden>还没有刷题记录。</p>
+      <form class="exam-form" id="drill-form">
+        <input type="date" id="drill-date" required>
+        <select id="drill-module" required>
+          <option value="zhengzhi">政治</option>
+          <option value="changshi">常识</option>
+          <option value="yanyu">言语</option>
+          <option value="shuliang">数量</option>
+          <option value="panduan" selected>判断</option>
+          <option value="ziliao">资料</option>
+        </select>
+        <input type="number" id="drill-total" placeholder="题数" min="1" required>
+        <input type="number" id="drill-correct" placeholder="对了几题" min="0" required>
+        <button type="submit">录入</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>模考记录 <span class="h2-note">套题模考阶段再启用,先留着框架</span></h2>
+      <table class="data-table" id="exam-table">
+        <thead><tr>
+          <th>日期</th><th class="num">常识</th><th class="num">言语</th><th class="num">数量</th><th class="num">判断</th><th class="num">资料</th><th class="num">申论</th><th>备注</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="empty-hint" id="exam-empty" hidden>还没有模考记录。</p>
+      <form class="exam-form" id="exam-form">
+        <input type="date" id="exam-form-date" required>
+        <input type="number" id="exam-changshi" placeholder="常识 %" min="0" max="100" required>
+        <input type="number" id="exam-yanyu" placeholder="言语 %" min="0" max="100" required>
+        <input type="number" id="exam-shuliang" placeholder="数量 %" min="0" max="100" required>
+        <input type="number" id="exam-panduan" placeholder="判断 %" min="0" max="100" required>
+        <input type="number" id="exam-ziliao" placeholder="资料 %" min="0" max="100" required>
+        <input type="number" id="exam-shenlun" placeholder="申论分" min="0" max="100">
+        <input type="text" id="exam-notes" placeholder="备注,如:粉笔模考 12 期">
+        <button type="submit">录入模考</button>
+      </form>
+    </div>
+
+  </section>
+
+  <!-- ============ 留言板 ============ -->
+  <section class="panel" id="tab-board">
+
+    <div class="card">
+      <h2>留言板 <span class="h2-note">对这个工具有什么需求和改进想法,直接写在这里</span></h2>
+      <form class="board-form" id="board-form">
+        <textarea id="board-text" rows="3" placeholder="比如:希望任务可以按周批量安排 / 热力图能不能点开看当天做了什么…" required></textarea>
+        <button type="submit">留言</button>
+      </form>
+      <ul class="msg-list" id="msg-list"></ul>
+      <p class="empty-hint" id="msg-empty" hidden>还没有留言。</p>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <span id="mode-label">—</span>
+  <button class="link-btn" id="reset-demo" hidden>清空本地数据</button>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/demo-data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/badges.js"></script>
+<script src="js/juice.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
