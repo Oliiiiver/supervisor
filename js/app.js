@@ -518,9 +518,11 @@
       if (t.owner === "her" && t.done) doneByDate[t.date] = (doneByDate[t.date] || 0) + 1;
     }
 
-    // 一日之际:北京时间(UTC+8)早八前创建当天的任务
+    // 一日之际:她本人在北京时间早八前创建当天的任务。
+    // 监督员排的任务不算——伦敦的傍晚恰好是北京的凌晨,否则他排明天的课表就会误触发
     const earlyBird = tasks.some(function (t) {
       if (t.owner !== "her" || !t.created_at) return false;
+      if ((t.created_by || "her") === "sup") return false;
       const bj = new Date(new Date(t.created_at).getTime() + 8 * 3600e3);
       return bj.getUTCHours() < 8 && bj.toISOString().slice(0, 10) === t.date;
     });
@@ -549,7 +551,7 @@
       bothDays: bothDays,
       dayMaxDone: Math.max(0, ...Object.values(doneByDate)),
       earlyBird: earlyBird,
-      msgCount: messages.length,
+      msgCount: messages.filter(m => (m.author || "her") !== "sup").length,
       ashore: !!settings.ashore,
       examEve: examEve,
       birthdayWindow: birthdayWindow,
@@ -669,6 +671,13 @@
       meta.className = "msg-meta";
       meta.textContent = m.created_at.slice(0, 10).replace(/-/g, "/");
 
+      if ((m.author || "her") === "sup") {
+        const tag = document.createElement("span");
+        tag.className = "kind-tag";
+        tag.textContent = "监督员";
+        meta.appendChild(tag);
+      }
+
       if (isSup()) {
         const del = document.createElement("button");
         del.className = "task-del";
@@ -701,6 +710,7 @@
       points: Math.min(pts, DAILY_CAP),
       date: $("#task-date-her").value,
       owner: "her",
+      created_by: isSup() ? "sup" : "her",
     });
     $("#task-title-her").value = "";
     $("#task-points-her").value = "";
@@ -714,6 +724,7 @@
       points: 0,
       date: $("#task-date-sup").value,
       owner: "sup",
+      created_by: isSup() ? "sup" : "her",
     });
     $("#task-title-sup").value = "";
     refresh();
@@ -733,6 +744,7 @@
     await Store.addReward({
       title: $("#reward-title").value.trim(),
       cost: parseInt($("#reward-cost").value, 10),
+      created_by: isSup() ? "sup" : "her",
     });
     $("#reward-title").value = "";
     $("#reward-cost").value = "";
@@ -783,7 +795,7 @@
     e.preventDefault();
     const text = $("#board-text").value.trim();
     if (!text) return;
-    await Store.addMessage(text);
+    await Store.addMessage(text, isSup() ? "sup" : "her");
     $("#board-text").value = "";
     refresh();
   });

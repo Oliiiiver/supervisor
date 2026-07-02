@@ -86,6 +86,7 @@ window.Store = (function () {
           id: nextId("task"), date: t.date, title: t.title, owner: t.owner,
           points: t.points, done: false, done_at: null,
           dismissed: false, liked: false,
+          created_by: t.created_by || "her",
           created_at: new Date().toISOString(),
         });
         return save();
@@ -174,7 +175,10 @@ window.Store = (function () {
 
     async addReward(r) {
       if (mode === "local") {
-        cache.rewards.push({ id: nextId("reward"), title: r.title, cost: r.cost, active: true });
+        cache.rewards.push({
+          id: nextId("reward"), title: r.title, cost: r.cost, active: true,
+          created_by: r.created_by || "her",
+        });
         return save();
       }
       await sb(db.from("rewards").insert(r));
@@ -189,11 +193,13 @@ window.Store = (function () {
       await sb(db.from("rewards").update({ cost: cost }).eq("id", id));
     },
 
-    // 历史上添加过的奖品总数(含已删除的,给"溺爱自己"成就用)
+    // 她添加过的奖品总数(含已删除的,给"溺爱自己"成就用;监督员加的不算)
     async countAllRewards() {
-      if (mode === "local") return cache.rewards.length;
-      const rows = await sb(db.from("rewards").select("id"));
-      return rows.length;
+      if (mode === "local") {
+        return cache.rewards.filter(r => (r.created_by || "her") !== "sup").length;
+      }
+      const rows = await sb(db.from("rewards").select("created_by"));
+      return rows.filter(r => (r.created_by || "her") !== "sup").length;
     },
 
     // 软删除:流水里可能引用它,只下架不抹掉
@@ -287,15 +293,15 @@ window.Store = (function () {
       return sb(db.from("messages").select("*").order("created_at", { ascending: false }));
     },
 
-    async addMessage(text) {
+    async addMessage(text, author) {
       if (mode === "local") {
         cache.messages.push({
-          id: nextId("message"), text: text,
+          id: nextId("message"), text: text, author: author || "her",
           created_at: new Date().toISOString(),
         });
         return save();
       }
-      await sb(db.from("messages").insert({ text: text }));
+      await sb(db.from("messages").insert({ text: text, author: author || "her" }));
     },
 
     async deleteMessage(id) {

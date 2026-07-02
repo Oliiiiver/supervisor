@@ -26,14 +26,16 @@ create table tasks (
   done_at   timestamptz,
   dismissed boolean not null default false, -- 逾期账被监督员销掉
   liked     boolean not null default false, -- 监督员点赞
-  created_at timestamptz not null default now() -- 「一日之际」成就用
+  created_at timestamptz not null default now(), -- 「一日之际」成就用
+  created_by text not null default 'her' check (created_by in ('her', 'sup')) -- 创建者,防监督员误触发成就
 );
 
 create table rewards (
   id     bigint generated always as identity primary key,
   title  text not null,
   cost   int  not null,
-  active boolean not null default true
+  active boolean not null default true,
+  created_by text not null default 'her' check (created_by in ('her', 'sup'))
 );
 
 create table ledger (
@@ -72,6 +74,7 @@ create table mock_exams (
 create table messages (
   id         bigint generated always as identity primary key,
   text       text not null,
+  author     text not null default 'her' check (author in ('her', 'sup')),
   created_at timestamptz not null default now()
 );
 
@@ -91,7 +94,7 @@ insert into phases (name, sort) values
 insert into settings (id, exam_name, exam_date, current_phase)
   values (1, '', null, (select id from phases where sort = 2));
 
-insert into rewards (title, cost) values ('休息半天', 500);
+insert into rewards (title, cost, created_by) values ('休息半天', 500, 'sup');
 
 -- 简化的访问控制:两人小工具,开放匿名读写。
 -- 站点 URL 不外传即可;如需更严格,给两人建账号并改用 auth 策略。
