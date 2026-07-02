@@ -5,11 +5,23 @@
 
   const DAILY_CAP = 100; // 每日积分上限(只作用于备考任务)
 
-  function todayISO() {
-    const d = new Date();
-    return d.getFullYear() + "-"
-      + String(d.getMonth() + 1).padStart(2, "0") + "-"
-      + String(d.getDate()).padStart(2, "0");
+  // 两人各自的时区:备考任务按北京时间翻页,陪跑任务按伦敦时间翻页。
+  // 这样无论谁在何时打开,看到的都是"她的今天 + 他的今天",视图完全一致。
+  const TZ_HER = "Asia/Shanghai";
+  const TZ_SUP = "Europe/London";
+
+  function dateInTZ(tz, d) {
+    // en-CA 的日期格式正好是 YYYY-MM-DD
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(d || new Date());
+  }
+
+  function todayHer() { return dateInTZ(TZ_HER); }
+  function todaySup() { return dateInTZ(TZ_SUP); }
+
+  function prevDate(iso) {
+    return new Date(Date.parse(iso) - 86400000).toISOString().slice(0, 10);
   }
 
   function fmtDate(iso) {
@@ -54,49 +66,24 @@
 
   // ---------- 小工具 ----------
 
-  function dateKey(d) {
-    return d.getFullYear() + "-"
-      + String(d.getMonth() + 1).padStart(2, "0") + "-"
-      + String(d.getDate()).padStart(2, "0");
-  }
-
-  // 今天通过任务已获得的分数。created_at 是 UTC,须转成本地日期再比,
-  // 否则北京时间凌晨完成的任务会被算进前一天的额度
+  // 她今天通过任务已获得的分数(额度按北京时间的"今天"结算)
   function earnedToday(ledger) {
-    const today = todayISO();
+    const today = todayHer();
     return ledger
-      .filter(e => e.kind === "task" && dateKey(new Date(e.created_at)) === today)
+      .filter(e => e.kind === "task" && dateInTZ(TZ_HER, new Date(e.created_at)) === today)
       .reduce((s, e) => s + e.delta, 0);
   }
 
-  // 当前连续打卡天数(从今天或昨天往回数)
-  function currentStreak(dateSet) {
+  // 当前连续打卡天数,从 anchor(当事人时区的今天)或其前一天往回数
+  function currentStreak(dateSet, anchor) {
     let streak = 0;
-    const d = new Date();
-    if (!dateSet.has(todayISO())) d.setDate(d.getDate() - 1);
-    while (dateSet.has(dateKey(d))) {
+    let d = anchor;
+    if (!dateSet.has(d)) d = prevDate(d);
+    while (dateSet.has(d)) {
       streak++;
-      d.setDate(d.getDate() - 1);
+      d = prevDate(d);
     }
     return streak;
-  }
-
-  // 历史最长连续天数
-  function maxStreak(dateSet) {
-    let best = 0;
-    for (const key of dateSet) {
-      const prev = new Date(key);
-      prev.setDate(prev.getDate() - 1);
-      if (dateSet.has(dateKey(prev))) continue; // 不是一段连击的起点
-      let len = 0;
-      const d = new Date(key);
-      while (dateSet.has(dateKey(d))) {
-        len++;
-        d.setDate(d.getDate() + 1);
-      }
-      best = Math.max(best, len);
-    }
-    return best;
   }
 
   function doneDates(tasks, owner) {
@@ -130,7 +117,7 @@
   function maxAllClearStreak(tasks) {
     const byDate = herTaskDays(tasks);
     const dates = Object.keys(byDate).sort();
-    const today = todayISO();
+    const today = todayHer();
     let best = 0, run = 0;
     for (const k of dates) {
       if (byDate[k].done === byDate[k].total) {
@@ -254,11 +241,12 @@
     const [settings, phases, tasks, ledger] = await Promise.all([
       Store.getSettings(), Store.listPhases(), Store.listTasks(), Store.listLedger(),
     ]);
-    const today = todayISO();
+    const tHer = todayHer();
+    const tSup = todaySup();
 
-    // 倒计时
+    // 倒计时(考试在国内,按北京时间算)
     if (settings.exam_date) {
-      const days = Math.ceil((new Date(settings.exam_date) - new Date(today)) / 86400000);
+      const days = Math.ceil((new Date(settings.exam_date) - new Date(tHer)) / 86400000);
       $("#countdown-days").textContent = days >= 0 ? days : "—";
       $("#exam-meta").textContent = (settings.exam_name || "考试") + " · " + settings.exam_date;
       $("#exam-name").value = settings.exam_name || "";
@@ -303,8 +291,9 @@
     }
     $("#current-phase").textContent = currentPhase ? currentPhase.name : "—";
 
-    // 之前未完成(逾期账,监督员才能销)
-    const overdue = tasks.filter(t => t.date < today && !t.done && !t.dismissed);
+    // 之前未完成(逾期账,监督员才能销)。逾期按各自时区的"今天"判
+    const overdue = tasks.filter(t =>
+      !t.done && !t.dismissed && t.date < (t.owner === "her" ? tHer : tSup));
     $("#overdue-wrap").hidden = overdue.length === 0;
     const oul = $("#overdue-list");
     oul.innerHTML = "";
@@ -362,9 +351,9 @@
       oul.appendChild(li);
     }
 
-    // 今日任务,两列
-    const todaysHer = tasks.filter(t => t.date === today && t.owner === "her");
-    const todaysSup = tasks.filter(t => t.date === today && t.owner === "sup");
+    // 今日任务,两列(各自时区的"今天")
+    const todaysHer = tasks.filter(t => t.date === tHer && t.owner === "her");
+    const todaysSup = tasks.filter(t => t.date === tSup && t.owner === "sup");
     const doneHer = todaysHer.filter(t => t.done);
     const earned = earnedToday(ledger);
 
@@ -396,7 +385,8 @@
     $("#task-empty-sup").hidden = todaysSup.length > 0;
     for (const t of todaysSup) ulSup.appendChild(taskRow(t));
 
-    if (!$("#task-date-her").value) $("#task-date-her").value = today;
+    if (!$("#task-date-her").value) $("#task-date-her").value = tHer;
+    if (!$("#task-date-sup").value) $("#task-date-sup").value = tSup;
   }
 
   // ---------- 渲染:奖励机制 ----------
@@ -408,7 +398,7 @@
 
     const balance = ledger.reduce((s, e) => s + e.delta, 0);
     $("#points-balance").textContent = balance;
-    $("#streak-days").textContent = currentStreak(doneDates(tasks, "her"));
+    $("#streak-days").textContent = currentStreak(doneDates(tasks, "her"), todayHer());
 
     // 奖品目录
     const grid = $("#reward-grid");
@@ -505,11 +495,11 @@
     $("#cum-days").textContent = studyDates.size;
     $("#cum-points").textContent = cumPoints;
 
-    // 双人热力图 + 共同打卡
-    Charts.renderHeatmap($("#heatmap-her"), tasks.filter(t => t.owner === "her"), 16);
-    Charts.renderHeatmap($("#heatmap-sup"), tasks.filter(t => t.owner === "sup"), 16);
-    $("#hm-streak-her").textContent = currentStreak(herDates);
-    $("#hm-streak-sup").textContent = currentStreak(supDates);
+    // 双人热力图 + 共同打卡(各按当事人时区锚定"今天")
+    Charts.renderHeatmap($("#heatmap-her"), tasks.filter(t => t.owner === "her"), 16, todayHer());
+    Charts.renderHeatmap($("#heatmap-sup"), tasks.filter(t => t.owner === "sup"), 16, todaySup());
+    $("#hm-streak-her").textContent = currentStreak(herDates, todayHer());
+    $("#hm-streak-sup").textContent = currentStreak(supDates, todaySup());
     const bothDays = [...herDates].filter(d => supDates.has(d)).length;
     $("#both-days").textContent = bothDays;
 
@@ -535,18 +525,16 @@
       return bj.getUTCHours() < 8 && bj.toISOString().slice(0, 10) === t.date;
     });
 
-    // 万事俱备:笔试前一天起自动解锁
-    const today = todayISO();
+    // 万事俱备:笔试前一天起自动解锁(考试与生日都按北京时间)
+    const tHer = todayHer();
     let examEve = false;
     if (settings.exam_date) {
-      const eve = new Date(settings.exam_date);
-      eve.setDate(eve.getDate() - 1);
-      examEve = new Date(today) >= eve && new Date(today) <= new Date(settings.exam_date);
+      examEve = tHer >= prevDate(settings.exam_date) && tHer <= settings.exam_date;
     }
 
     // 生日快乐:11 月 30 日起一个月的窗口内解锁(解锁即永久)
-    const now = new Date();
-    const birthdayWindow = (now.getMonth() === 10 && now.getDate() >= 30) || now.getMonth() === 11;
+    const monthDay = tHer.slice(5);
+    const birthdayWindow = monthDay >= "11-30" || monthDay.slice(0, 2) === "12";
 
     const ctx = {
       herDoneCount: tasks.filter(t => t.owner === "her" && t.done).length,
@@ -643,7 +631,7 @@
       tr.lastChild.appendChild(del);
       dtbody.appendChild(tr);
     }
-    if (!$("#drill-date").value) $("#drill-date").value = todayISO();
+    if (!$("#drill-date").value) $("#drill-date").value = todayHer();
 
     // 模考记录(留框架,后期启用)
     const tbody = $("#exam-table tbody");
@@ -662,7 +650,7 @@
       tr.lastChild.textContent = e.notes || "";
       tbody.appendChild(tr);
     }
-    if (!$("#exam-form-date").value) $("#exam-form-date").value = todayISO();
+    if (!$("#exam-form-date").value) $("#exam-form-date").value = todayHer();
   }
 
   // ---------- 渲染:留言板 ----------
@@ -724,7 +712,7 @@
     await Store.addTask({
       title: $("#task-title-sup").value.trim(),
       points: 0,
-      date: todayISO(),
+      date: $("#task-date-sup").value,
       owner: "sup",
     });
     $("#task-title-sup").value = "";

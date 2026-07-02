@@ -46,6 +46,9 @@
 
 * { box-sizing: border-box; }
 
+/* hidden 属性必须赢过任何 display 规则(否则 .allclear 的 flex 会盖掉它) */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--page);

@@ -54,7 +54,7 @@
     </div>
 
     <div class="card">
-      <h2>今日任务 <span class="h2-note">各自安排、各自打卡;备考任务的分值由监督员赋,每日上限 100 分</span></h2>
+      <h2>今日任务 <span class="h2-note">备考按北京时间、陪跑按伦敦时间翻页;分值由监督员赋,每日上限 100 分</span></h2>
 
       <div class="overdue" id="overdue-wrap" hidden>
         <div class="overdue-title">之前未完成</div>
@@ -83,7 +83,8 @@
           <ul class="task-list" id="task-list-sup"></ul>
           <p class="empty-hint" id="task-empty-sup" hidden>监督员今天还没安排任务。</p>
           <form class="col-form" id="task-form-sup">
-            <input type="text" id="task-title-sup" placeholder="监督员今天要做的事" required>
+            <input type="text" id="task-title-sup" placeholder="监督员要做的事" required>
+            <input type="date" id="task-date-sup" required>
             <button type="submit">添加</button>
           </form>
         </div>

@@ -140,19 +140,20 @@ window.Charts = (function () {
     });
   }
 
-  // 打卡热力图:列为周(周一起),格子颜色 = 当天完成任务数
-  function renderHeatmap(container, tasks, weeks) {
+  // 打卡热力图:列为周(周一起),格子颜色 = 当天完成任务数。
+  // anchorISO 是"当事人时区的今天"(YYYY-MM-DD),网格以它为最后一天;
+  // 日期运算全部走 UTC,避免受浏览器本地时区影响。
+  function renderHeatmap(container, tasks, weeks, anchorISO) {
     const doneByDate = {};
     for (const t of tasks) {
       if (t.done) doneByDate[t.date] = (doneByDate[t.date] || 0) + 1;
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const anchor = new Date(anchorISO + "T00:00:00Z");
     const WEEKS = weeks || 20;
     // 定位到 WEEKS 周前那一周的周一
-    const start = new Date(today);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7) - (WEEKS - 1) * 7);
+    const start = new Date(anchor);
+    start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7) - (WEEKS - 1) * 7);
 
     const weekdays = ["一", "", "三", "", "五", "", "日"];
     let html = '<div class="hm-weekdays">'
@@ -161,19 +162,17 @@ window.Charts = (function () {
 
     const d = new Date(start);
     for (let i = 0; i < WEEKS * 7; i++) {
-      const key = d.getFullYear() + "-"
-        + String(d.getMonth() + 1).padStart(2, "0") + "-"
-        + String(d.getDate()).padStart(2, "0");
-      if (d > today) {
+      const key = d.toISOString().slice(0, 10);
+      if (d > anchor) {
         html += '<span class="hm-cell future"></span>';
       } else {
         const n = doneByDate[key] || 0;
         const lv = Math.min(n, 4);
         html += '<span class="hm-cell lv' + lv + '" title="'
-          + (d.getMonth() + 1) + "月" + d.getDate() + "日 · "
+          + (d.getUTCMonth() + 1) + "月" + d.getUTCDate() + "日 · "
           + (n ? "完成 " + n + " 个任务" : "未打卡") + '"></span>';
       }
-      d.setDate(d.getDate() + 1);
+      d.setUTCDate(d.getUTCDate() + 1);
     }
     html += "</div>";
     container.innerHTML = html;

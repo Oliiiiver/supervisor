@@ -32,7 +32,9 @@ window.Store = (function () {
 
     async init() {
       const cfg = window.CONFIG || {};
-      if (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase) {
+      // 测试后门:强制本地模式(配好云端后仍可做本地种子测试)
+      const forceLocal = localStorage.getItem("supervisor-force-local") === "1";
+      if (!forceLocal && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase) {
         db = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
         mode = "cloud";
       } else {
