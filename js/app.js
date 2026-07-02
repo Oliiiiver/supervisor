@@ -60,11 +60,12 @@
       + String(d.getDate()).padStart(2, "0");
   }
 
-  // 今天通过任务已获得的分数(红包不占每日上限)
+  // 今天通过任务已获得的分数。created_at 是 UTC,须转成本地日期再比,
+  // 否则北京时间凌晨完成的任务会被算进前一天的额度
   function earnedToday(ledger) {
     const today = todayISO();
     return ledger
-      .filter(e => e.kind === "task" && e.created_at.slice(0, 10) === today)
+      .filter(e => e.kind === "task" && dateKey(new Date(e.created_at)) === today)
       .reduce((s, e) => s + e.delta, 0);
   }
 
