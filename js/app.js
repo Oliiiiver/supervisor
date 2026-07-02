@@ -808,6 +808,7 @@
   }
 
   (async function () {
+    Pomodoro.init($("#pomo-chip"));
     await Store.init();
     const local = Store.mode() === "local";
     $("#demo-badge").hidden = !local;

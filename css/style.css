@@ -122,6 +122,45 @@ body {
   padding: 2px 8px;
 }
 
+/* ---------- 番茄钟徽章 ---------- */
+
+.pomo-chip {
+  background: var(--surface);
+  color: var(--ink-2);
+  border: 1px solid var(--hairline);
+  padding: 3px 12px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.pomo-chip:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pomo-chip.running {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.pomo-chip.resting {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  animation: pomo-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes pomo-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+.pomo-toast { border-color: var(--hairline); }
+.pomo-toast .juice-toast-icon { color: var(--ink-2); }
+
 .sup-toggle {
   display: flex;
   align-items: center;
