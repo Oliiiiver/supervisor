@@ -210,7 +210,20 @@
         pts.value = t.points;
         pts.title = "分值(改完自动保存)";
         pts.addEventListener("change", async function () {
-          await Store.updateTaskPoints(t.id, parseInt(pts.value, 10) || 0);
+          const v = Math.min(parseInt(pts.value, 10) || 0, DAILY_CAP);
+          await Store.updateTaskPoints(t.id, v);
+          // 时差场景:她完成时还没赋分,积分记了 0。事后赋分要把流水补上,
+          // 额度按她完成那天(北京时间)已得的分算,不挤占今天的
+          if (t.done) {
+            const fresh = await Store.listLedger();
+            const day = dateInTZ(TZ_HER, new Date(t.done_at || Date.now()));
+            const earnedThatDay = fresh
+              .filter(e => e.kind === "task" && e.task_id !== t.id
+                && dateInTZ(TZ_HER, new Date(e.created_at)) === day)
+              .reduce((s, e) => s + e.delta, 0);
+            const award = Math.min(v, Math.max(0, DAILY_CAP - earnedThatDay));
+            await Store.reconcileTaskLedger(t, award);
+          }
           refresh();
         });
         li.append(pts);

@@ -103,6 +103,30 @@ window.Store = (function () {
       await sb(db.from("tasks").update({ points: points }).eq("id", id));
     },
 
+    // 事后赋分:任务完成时分值还是 0(或后来改了),重算这笔积分流水。
+    // award 由调用方按完成当天的上限算好;流水日期记在完成那天,不占今天额度
+    async reconcileTaskLedger(task, award) {
+      if (mode === "local") {
+        cache.ledger = cache.ledger.filter(
+          x => !(x.kind === "task" && x.task_id === task.id));
+        if (award > 0) {
+          cache.ledger.push({
+            id: nextId("ledger"), delta: award, reason: task.title,
+            kind: "task", task_id: task.id, reward_id: null,
+            created_at: task.done_at || new Date().toISOString(),
+          });
+        }
+        return save();
+      }
+      await sb(db.from("ledger").delete().eq("task_id", task.id).eq("kind", "task"));
+      if (award > 0) {
+        await sb(db.from("ledger").insert({
+          delta: award, reason: task.title, kind: "task", task_id: task.id,
+          created_at: task.done_at || new Date().toISOString(),
+        }));
+      }
+    },
+
     // 销账:把逾期未完成的任务从"之前未完成"里清掉(仅监督员操作)
     async dismissTask(id) {
       if (mode === "local") {
