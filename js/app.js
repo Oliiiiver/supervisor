@@ -66,12 +66,37 @@
 
   // ---------- 小工具 ----------
 
-  // 她今天通过任务已获得的分数(额度按北京时间的"今天"结算)
-  function earnedToday(ledger) {
-    const today = todayHer();
-    return ledger
-      .filter(e => e.kind === "task" && dateInTZ(TZ_HER, new Date(e.created_at)) === today)
-      .reduce((s, e) => s + e.delta, 0);
+  // 积分 = 完成情况 × 赋分,按完成那天(北京时间)聚合,每日上限 100 分。
+  // 全部由任务实时推导,不落库:事后赋分、改分、取消打卡,积分自动跟着变,
+  // 不存副本就永远不会不一致(流水表里的"任务"行也是现算出来的)
+  function earnDay(t) {
+    return t.done_at ? dateInTZ(TZ_HER, new Date(t.done_at)) : t.date;
+  }
+
+  // date → { raw, capped, n } 只统计她的已完成任务
+  function earningsByDay(tasks) {
+    const byDay = {};
+    for (const t of tasks) {
+      if (t.owner !== "her" || !t.done || t.points <= 0) continue;
+      const d = earnDay(t);
+      const e = byDay[d] || (byDay[d] = { raw: 0, n: 0 });
+      e.raw += t.points;
+      e.n++;
+    }
+    for (const d in byDay) byDay[d].capped = Math.min(DAILY_CAP, byDay[d].raw);
+    return byDay;
+  }
+
+  function totalEarned(tasks) {
+    const byDay = earningsByDay(tasks);
+    let s = 0;
+    for (const d in byDay) s += byDay[d].capped;
+    return s;
+  }
+
+  function earnedToday(tasks) {
+    const e = earningsByDay(tasks)[todayHer()];
+    return e ? e.capped : 0;
   }
 
   // 当前连续打卡天数,从 anchor(当事人时区的今天)或其前一天往回数
@@ -171,21 +196,20 @@
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
         if (t.owner === "her") {
-          const fresh = await Store.listLedger();
-          const room = Math.max(0, DAILY_CAP - earnedToday(fresh));
-          const award = Math.min(t.points, room);
-          await Store.setTaskDone(t, true, award);
+          await Store.setTaskDone(t, true);
           Juice.burst(cx, cy);
-          if (award > 0) Juice.floatText(cx + 24, cy, "+" + award + " 分");
-          if (t.points > 0 && award < t.points) {
-            alert("已到每日 " + DAILY_CAP + " 分上限,本次记 " + award + " 分。任务照常打卡。");
+          if (t.points > 0) {
+            // 这一勾实际带来的分 = 含它时今天的分 − 不含它时今天的分(日上限内)
+            const fresh = await Store.listTasks();
+            const gained = earnedToday(fresh) - earnedToday(fresh.filter(x => x.id !== t.id));
+            if (gained > 0) Juice.floatText(cx + 24, cy, "+" + gained + " 分");
           }
         } else {
-          await Store.setTaskDone(t, true, 0); // 陪跑任务不进积分经济
+          await Store.setTaskDone(t, true); // 陪跑任务不进积分经济
           Juice.burst(cx, cy, { n: 16, power: 60 });
         }
       } else {
-        await Store.setTaskDone(t, false, 0);
+        await Store.setTaskDone(t, false);
       }
       refresh();
     });
@@ -210,21 +234,8 @@
         pts.value = t.points;
         pts.title = "分值(改完自动保存)";
         pts.addEventListener("change", async function () {
-          const v = Math.min(parseInt(pts.value, 10) || 0, DAILY_CAP);
-          await Store.updateTaskPoints(t.id, v);
-          // 时差场景:她完成时还没赋分,积分记了 0。事后赋分要把流水补上,
-          // 额度按她完成那天(北京时间)已得的分算,不挤占今天的
-          if (t.done) {
-            const fresh = await Store.listLedger();
-            const day = dateInTZ(TZ_HER, new Date(t.done_at || Date.now()));
-            const earnedThatDay = fresh
-              .filter(e => e.kind === "task" && e.task_id !== t.id
-                && dateInTZ(TZ_HER, new Date(e.created_at)) === day)
-              .reduce((s, e) => s + e.delta, 0);
-            const award = Math.min(v, Math.max(0, DAILY_CAP - earnedThatDay));
-            await Store.reconcileTaskLedger(t, award);
-          }
-          refresh();
+          await Store.updateTaskPoints(t.id, Math.min(parseInt(pts.value, 10) || 0, DAILY_CAP));
+          refresh(); // 积分实时推导,事后赋分不需要补账
         });
         li.append(pts);
       } else {
@@ -251,8 +262,8 @@
   }
 
   async function renderPlan() {
-    const [settings, phases, tasks, ledger] = await Promise.all([
-      Store.getSettings(), Store.listPhases(), Store.listTasks(), Store.listLedger(),
+    const [settings, phases, tasks] = await Promise.all([
+      Store.getSettings(), Store.listPhases(), Store.listTasks(),
     ]);
     const tHer = todayHer();
     const tSup = todaySup();
@@ -322,14 +333,15 @@
         const rect = cb.getBoundingClientRect();
         // 补做:积分按今天的上限记
         if (t.owner === "her") {
-          const fresh = await Store.listLedger();
-          const room = Math.max(0, DAILY_CAP - earnedToday(fresh));
-          const award = Math.min(t.points, room);
-          await Store.setTaskDone(t, true, award);
+          await Store.setTaskDone(t, true);
           Juice.burst(rect.left + 9, rect.top + 9);
-          if (award > 0) Juice.floatText(rect.left + 30, rect.top + 9, "+" + award + " 分");
+          if (t.points > 0) {
+            const fresh = await Store.listTasks();
+            const gained = earnedToday(fresh) - earnedToday(fresh.filter(x => x.id !== t.id));
+            if (gained > 0) Juice.floatText(rect.left + 30, rect.top + 9, "+" + gained + " 分");
+          }
         } else {
-          await Store.setTaskDone(t, true, 0);
+          await Store.setTaskDone(t, true);
           Juice.burst(rect.left + 9, rect.top + 9, { n: 16, power: 60 });
         }
         refresh();
@@ -368,7 +380,7 @@
     const todaysHer = tasks.filter(t => t.date === tHer && t.owner === "her");
     const todaysSup = tasks.filter(t => t.date === tSup && t.owner === "sup");
     const doneHer = todaysHer.filter(t => t.done);
-    const earned = earnedToday(ledger);
+    const earned = earnedToday(tasks);
 
     $("#today-done").textContent = doneHer.length;
     $("#today-total").textContent = todaysHer.length;
@@ -409,7 +421,9 @@
       Store.listRewards(), Store.listLedger(), Store.listTasks(),
     ]);
 
-    const balance = ledger.reduce((s, e) => s + e.delta, 0);
+    // 余额 = 实时推导的任务积分 − 兑换支出(旧版流水里的任务记账行直接忽略)
+    const redeems = ledger.filter(e => e.kind === "redeem");
+    const balance = totalEarned(tasks) + redeems.reduce((s, e) => s + e.delta, 0);
     $("#points-balance").textContent = balance;
     $("#streak-days").textContent = currentStreak(doneDates(tasks, "her"), todayHer());
 
@@ -469,20 +483,32 @@
       grid.appendChild(card);
     }
 
-    // 流水(最近 30 条)
-    const KIND_LABEL = { task: "任务", redeem: "兑换", bonus: "红包" };
+    // 流水(最近 30 条):任务积分按日现算聚合 + 兑换记录
+    const byDay = earningsByDay(tasks);
+    const rows = [];
+    for (const d in byDay) {
+      rows.push({ date: d, kind: "任务", reason: "完成任务 × " + byDay[d].n, delta: byDay[d].capped });
+    }
+    for (const e of redeems) {
+      rows.push({
+        date: dateInTZ(TZ_HER, new Date(e.created_at)), kind: "兑换",
+        reason: e.reason, delta: e.delta,
+      });
+    }
+    rows.sort((a, b) => b.date.localeCompare(a.date));
+
     const tbody = $("#ledger-table tbody");
     tbody.innerHTML = "";
-    $("#ledger-empty").hidden = ledger.length > 0;
-    for (const e of ledger.slice(0, 30)) {
+    $("#ledger-empty").hidden = rows.length > 0;
+    for (const r of rows.slice(0, 30)) {
       const tr = document.createElement("tr");
-      const sign = e.delta > 0 ? "+" : "";
-      tr.innerHTML = "<td>" + fmtDate(e.created_at.slice(0, 10)) + "</td>"
+      const sign = r.delta > 0 ? "+" : "";
+      tr.innerHTML = "<td>" + fmtDate(r.date) + "</td>"
         + "<td></td>"
-        + '<td><span class="kind-tag">' + (KIND_LABEL[e.kind] || e.kind) + "</span></td>"
-        + '<td class="num ' + (e.delta > 0 ? "delta-pos" : "delta-neg") + '">'
-        + sign + e.delta + "</td>";
-      tr.children[1].textContent = e.reason;
+        + '<td><span class="kind-tag">' + r.kind + "</span></td>"
+        + '<td class="num ' + (r.delta > 0 ? "delta-pos" : "delta-neg") + '">'
+        + sign + r.delta + "</td>";
+      tr.children[1].textContent = r.reason;
       tbody.appendChild(tr);
     }
   }
@@ -503,7 +529,7 @@
     // 累计数字:只涨不跌
     const totalQuestions = drills.reduce((s, d) => s + d.total, 0);
     const studyDates = new Set([...herDates, ...drills.map(d => d.date)]);
-    const cumPoints = ledger.filter(e => e.delta > 0).reduce((s, e) => s + e.delta, 0);
+    const cumPoints = totalEarned(tasks); // 历史总积分:兑换不扣,实时推导
     $("#cum-questions").textContent = totalQuestions;
     $("#cum-days").textContent = studyDates.size;
     $("#cum-points").textContent = cumPoints;
