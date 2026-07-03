@@ -655,7 +655,7 @@
       tr.innerHTML = "<td>" + fmtDate(d.date) + "</td>"
         + "<td>" + (Charts.MODULE_LABEL[d.module] || d.module) + "</td>"
         + '<td class="num">' + d.total + "</td>"
-        + '<td class="num">' + d.correct + "</td>"
+        + '<td class="num">' + (d.total - d.correct) + "</td>"
         + '<td class="num">' + acc + "%</td>"
         + '<td class="like-cell"></td>'
         + "<td></td>";
@@ -793,20 +793,20 @@
   $("#drill-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const total = parseInt($("#drill-total").value, 10);
-    const correct = parseInt($("#drill-correct").value, 10);
-    if (correct > total) {
-      alert("对的题数不能超过题数。");
+    const wrong = parseInt($("#drill-wrong").value, 10);
+    if (wrong > total) {
+      alert("错的题数不能超过题数。");
       return;
     }
     await Store.addDrill({
       date: $("#drill-date").value,
       module: $("#drill-module").value,
       total: total,
-      correct: correct,
+      correct: total - wrong, // 她习惯记错题数,库里仍存对题数
       liked: false,
     });
     $("#drill-total").value = "";
-    $("#drill-correct").value = "";
+    $("#drill-wrong").value = "";
     refresh();
   });
 

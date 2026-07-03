@@ -195,7 +195,7 @@
     <div class="card">
       <h2>专项刷题记录 <span class="h2-note">每组专项练习做完就记一笔,正确率自动计算</span></h2>
       <table class="data-table" id="drill-table">
-        <thead><tr><th>日期</th><th>模块</th><th class="num">题数</th><th class="num">对</th><th class="num">正确率</th><th></th><th></th></tr></thead>
+        <thead><tr><th>日期</th><th>模块</th><th class="num">题数</th><th class="num">错</th><th class="num">正确率</th><th></th><th></th></tr></thead>
         <tbody></tbody>
       </table>
       <p class="empty-hint" id="drill-empty" hidden>还没有刷题记录。</p>
@@ -210,7 +210,7 @@
           <option value="ziliao">资料</option>
         </select>
         <input type="number" id="drill-total" placeholder="题数" min="1" required>
-        <input type="number" id="drill-correct" placeholder="对了几题" min="0" required>
+        <input type="number" id="drill-wrong" placeholder="错了几题" min="0" required>
         <button type="submit">录入</button>
       </form>
     </div>
