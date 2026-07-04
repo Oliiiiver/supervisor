@@ -52,7 +52,7 @@ create table ledger (
 create table drills (
   id      bigint generated always as identity primary key,
   date    date not null,
-  module  text not null check (module in ('zhengzhi', 'changshi', 'yanyu', 'shuliang', 'panduan', 'ziliao')),
+  module  text not null check (module in ('zhengzhi', 'changshi', 'yanyu', 'shuliang', 'panduan', 'tutui', 'ziliao')),
   total   int  not null check (total > 0),    -- 题数
   correct int  not null check (correct >= 0), -- 对了几题
   liked   boolean not null default false       -- 监督员点赞

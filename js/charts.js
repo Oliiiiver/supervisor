@@ -9,12 +9,14 @@ window.Charts = (function () {
     { key: "yanyu",    label: "言语" },
     { key: "shuliang", label: "数量" },
     { key: "panduan",  label: "判断" },
+    { key: "tutui",    label: "图推" },
     { key: "ziliao",   label: "资料" },
   ];
 
-  // 分类色板前六槽(经 CVD/对比度校验的固定顺序)
-  const SERIES_LIGHT = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e34948"];
-  const SERIES_DARK  = ["#3987e5", "#199e70", "#c98500", "#008300", "#9085e9", "#e66767"];
+  // 分类色板七个槽(经 CVD/对比度校验;颜色跟模块走,图推用第七槽品红,
+  // 插在判断/资料之间的相邻顺序也校验过)
+  const SERIES_LIGHT = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e87ba4", "#e34948"];
+  const SERIES_DARK  = ["#3987e5", "#199e70", "#c98500", "#008300", "#9085e9", "#d55181", "#e66767"];
 
   function isDark() {
     return matchMedia("(prefers-color-scheme: dark)").matches;
