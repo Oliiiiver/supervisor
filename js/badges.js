@@ -29,16 +29,16 @@ window.Badges = (function () {
     {
       id: "allclear-streak-7",
       name: "提按有度",
-      desc: "连续 7 天任务全清",
+      desc: "累计 7 天任务全清",
       icon: icon('<path d="M4 20c4-8 8 4 12-4s8 2 12-4"/>'),
-      test: ctx => ctx.maxAllClearStreak >= 7,
+      test: ctx => ctx.allClearDays >= 7,
     },
     {
       id: "allclear-streak-30",
       name: "入木三分",
-      desc: "连续 30 天任务全清",
+      desc: "累计 30 天任务全清",
       icon: icon('<rect x="5" y="20" width="22" height="6"/><path d="M16 4v12M11 12l5 5 5-5"/>'),
-      test: ctx => ctx.maxAllClearStreak >= 30,
+      test: ctx => ctx.allClearDays >= 30,
     },
     {
       id: "allclear-60",
@@ -53,6 +53,13 @@ window.Badges = (function () {
       desc: "累计 90 天任务全清",
       icon: icon('<ellipse cx="16" cy="21" rx="11" ry="5"/><path d="M16 4v8M13 9l3 3 3-3"/>'),
       test: ctx => ctx.allClearDays >= 90,
+    },
+    {
+      id: "allclear-120",
+      name: "力透纸背",
+      desc: "累计 120 天任务全清",
+      icon: icon('<rect x="7" y="4" width="18" height="15"/><path d="M16 8v18"/><path d="M12 22l4 4 4-4"/>'),
+      test: ctx => ctx.allClearDays >= 120,
     },
     {
       id: "allclear-150",
@@ -73,9 +80,9 @@ window.Badges = (function () {
     {
       id: "big-spender",
       name: "挥金如土",
-      desc: "累计花费 5000 积分兑换奖品",
+      desc: "累计花费 10000 积分兑换奖品",
       icon: icon('<circle cx="10" cy="9" r="4"/><circle cx="22" cy="13" r="4"/><circle cx="13" cy="23" r="4"/>'),
-      test: ctx => ctx.spentPoints >= 5000,
+      test: ctx => ctx.spentPoints >= 10000,
     },
     {
       id: "work-rest",
@@ -102,7 +109,7 @@ window.Badges = (function () {
     },
     {
       id: "mod-yanyu",
-      name: "舌齿唇喉",
+      name: "声韵辞章",
       desc: "言语单组 20 题以上正确率达 90%",
       icon: icon('<path d="M5 6h22v14H15l-6 6v-6H5z"/>'),
       test: ctx => ctx.module90.yanyu,
@@ -135,6 +142,13 @@ window.Badges = (function () {
       icon: icon('<rect x="7" y="7" width="18" height="18"/><rect x="12" y="12" width="8" height="8" fill="currentColor" stroke="none"/>'),
       test: ctx => ctx.module90.zhengzhi,
     },
+    {
+      id: "mod-tutui",
+      name: "剥复损益",
+      desc: "图推单组 20 题以上正确率达 90%",
+      icon: icon('<path d="M6 10h20M6 16h8M18 16h8M6 22h20"/>'),
+      test: ctx => ctx.module90.tutui,
+    },
 
     // ---------- 文官系列:专项刷题次数 ----------
     {
@@ -147,37 +161,37 @@ window.Badges = (function () {
     {
       id: "drill-30",
       name: "举人入仕",
-      desc: "累计完成 30 次专项刷题",
+      desc: "累计刷 500 题",
       icon: icon('<path d="M9 5h14v22H9z"/><path d="M13 11h6M13 16h6M13 21h6"/>'),
-      test: ctx => ctx.drillCount >= 30,
+      test: ctx => ctx.totalQuestions >= 500,
     },
     {
       id: "drill-60",
       name: "加官拜爵",
-      desc: "累计完成 60 次专项刷题",
+      desc: "累计刷 1000 题",
       icon: icon('<path d="M9 17a7 7 0 0 1 14 0v5H9z"/><path d="M3 19h6M23 19h6"/>'),
-      test: ctx => ctx.drillCount >= 60,
+      test: ctx => ctx.totalQuestions >= 1000,
     },
     {
       id: "drill-90",
       name: "六部沉浮",
-      desc: "累计完成 90 次专项刷题",
+      desc: "累计刷 1500 题",
       icon: icon('<rect x="5" y="8" width="6" height="6"/><rect x="13" y="8" width="6" height="6"/><rect x="21" y="8" width="6" height="6"/><rect x="5" y="18" width="6" height="6"/><rect x="13" y="18" width="6" height="6"/><rect x="21" y="18" width="6" height="6"/>'),
-      test: ctx => ctx.drillCount >= 90,
+      test: ctx => ctx.totalQuestions >= 1500,
     },
     {
       id: "drill-120",
       name: "位列三公",
-      desc: "累计完成 120 次专项刷题",
+      desc: "累计刷 2000 题",
       icon: icon('<path d="M7 26V10M16 26V6M25 26V10"/><path d="M4 27h24M4 10h6M13 6h6M22 10h6"/>'),
-      test: ctx => ctx.drillCount >= 120,
+      test: ctx => ctx.totalQuestions >= 2000,
     },
     {
       id: "drill-150",
       name: "权倾朝野",
-      desc: "累计完成 150 次专项刷题",
+      desc: "累计刷 2500 题",
       icon: icon('<rect x="8" y="14" width="16" height="12"/><path d="M12 14v-3a4 4 0 0 1 8 0v3"/><circle cx="16" cy="8" r="2"/>'),
-      test: ctx => ctx.drillCount >= 150,
+      test: ctx => ctx.totalQuestions >= 2500,
     },
 
     // ---------- 武官系列:模考 ----------
@@ -263,11 +277,25 @@ window.Badges = (function () {
       test: ctx => ctx.msgCount >= 1,
     },
     {
+      id: "both-7",
+      name: "倾盖如故",
+      desc: "两人同日打卡累计 7 天",
+      icon: icon('<circle cx="12" cy="16" r="8"/><circle cx="20" cy="16" r="8"/>'),
+      test: ctx => ctx.bothDays >= 7,
+    },
+    {
       id: "both-30",
       name: "海内比邻",
       desc: "两人同日打卡累计 30 天",
       icon: icon('<rect x="5" y="10" width="13" height="13"/><rect x="14" y="9" width="13" height="13"/>'),
       test: ctx => ctx.bothDays >= 30,
+    },
+    {
+      id: "both-60",
+      name: "如切如磋",
+      desc: "两人同日打卡累计 60 天",
+      icon: icon('<path d="M8 12l8-7 8 7-8 15z"/><path d="M8 12h16"/><path d="M12 12l4 15 4-15"/>'),
+      test: ctx => ctx.bothDays >= 60,
     },
     {
       id: "both-150",

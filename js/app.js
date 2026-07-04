@@ -586,6 +586,8 @@
       rewardCountAll: rewardCountAll,
       module90: module90,
       drillCount: drills.length,
+      totalQuestions: totalQuestions, // 文官系列按累计题数
+
       examCount: exams.length,
       bothDays: bothDays,
       dayMaxDone: Math.max(0, ...Object.values(doneByDate)),
