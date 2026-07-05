@@ -103,14 +103,24 @@ window.Store = (function () {
       await sb(db.from("tasks").update({ points: points }).eq("id", id));
     },
 
-    // 销账:把逾期未完成的任务从"之前未完成"里清掉(仅监督员操作)
-    async dismissTask(id) {
+    // 逾期自清:没做完的任务第二天自动消失(计划赶不上变化,不留催办列表)。
+    // 软删除:页面上不再出现,但保留记录,全清成就照实判定
+    async dismissOverdue(tHer, tSup) {
       if (mode === "local") {
-        const t = cache.tasks.find(x => x.id === id);
-        if (t) t.dismissed = true;
-        return save();
+        let changed = false;
+        for (const t of cache.tasks) {
+          if (!t.done && !t.dismissed && t.date < (t.owner === "her" ? tHer : tSup)) {
+            t.dismissed = true;
+            changed = true;
+          }
+        }
+        if (changed) save();
+        return;
       }
-      await sb(db.from("tasks").update({ dismissed: true }).eq("id", id));
+      await sb(db.from("tasks").update({ dismissed: true })
+        .eq("owner", "her").eq("done", false).eq("dismissed", false).lt("date", tHer));
+      await sb(db.from("tasks").update({ dismissed: true })
+        .eq("owner", "sup").eq("done", false).eq("dismissed", false).lt("date", tSup));
     },
 
     async setTaskLiked(id, liked) {

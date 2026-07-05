@@ -262,11 +262,13 @@
   }
 
   async function renderPlan() {
+    const tHer = todayHer();
+    const tSup = todaySup();
+    // 逾期自清:昨天没做完的任务今天自动消失(软删除,全清判定仍算数)
+    await Store.dismissOverdue(tHer, tSup);
     const [settings, phases, tasks] = await Promise.all([
       Store.getSettings(), Store.listPhases(), Store.listTasks(),
     ]);
-    const tHer = todayHer();
-    const tSup = todaySup();
 
     // 倒计时(考试在国内,按北京时间算)
     if (settings.exam_date) {
@@ -314,67 +316,6 @@
       list.appendChild(li);
     }
     $("#current-phase").textContent = currentPhase ? currentPhase.name : "—";
-
-    // 之前未完成(逾期账,监督员才能销)。逾期按各自时区的"今天"判
-    const overdue = tasks.filter(t =>
-      !t.done && !t.dismissed && t.date < (t.owner === "her" ? tHer : tSup));
-    $("#overdue-wrap").hidden = overdue.length === 0;
-    const oul = $("#overdue-list");
-    oul.innerHTML = "";
-    for (const t of overdue) {
-      const li = document.createElement("li");
-      li.className = "task-item overdue-item";
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "task-check";
-      cb.title = "补上这笔账";
-      cb.addEventListener("change", async function () {
-        const rect = cb.getBoundingClientRect();
-        // 补做:积分按今天的上限记
-        if (t.owner === "her") {
-          await Store.setTaskDone(t, true);
-          Juice.burst(rect.left + 9, rect.top + 9);
-          if (t.points > 0) {
-            const fresh = await Store.listTasks();
-            const gained = earnedToday(fresh) - earnedToday(fresh.filter(x => x.id !== t.id));
-            if (gained > 0) Juice.floatText(rect.left + 30, rect.top + 9, "+" + gained + " 分");
-          }
-        } else {
-          await Store.setTaskDone(t, true);
-          Juice.burst(rect.left + 9, rect.top + 9, { n: 16, power: 60 });
-        }
-        refresh();
-      });
-
-      const date = document.createElement("span");
-      date.className = "overdue-date";
-      date.textContent = fmtDate(t.date);
-
-      const tag = document.createElement("span");
-      tag.className = "kind-tag";
-      tag.textContent = t.owner === "her" ? "备考" : "陪跑";
-
-      const title = document.createElement("span");
-      title.className = "task-title";
-      title.textContent = t.title;
-
-      li.append(cb, date, tag, title);
-
-      if (isSup()) {
-        const dismiss = document.createElement("button");
-        dismiss.className = "task-del";
-        dismiss.textContent = "销账";
-        dismiss.title = "不补了,从这里清掉";
-        dismiss.addEventListener("click", async function () {
-          if (!confirm("销掉「" + t.title + "」这笔账?")) return;
-          await Store.dismissTask(t.id);
-          refresh();
-        });
-        li.append(dismiss);
-      }
-      oul.appendChild(li);
-    }
 
     // 今日任务,两列(各自时区的"今天")
     const todaysHer = tasks.filter(t => t.date === tHer && t.owner === "her");
