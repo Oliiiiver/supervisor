@@ -454,6 +454,76 @@
     }
   }
 
+  // ---------- 专项刷题看板 ----------
+
+  // 她每天换一个模块练,混在一起看不出单科的进步;
+  // 选中某个模块就只看它的走势 + 进步数字,选择记在本机
+  const DRILL_FILTER_KEY = "supervisor-drill-filter";
+
+  function drillFilter() {
+    const v = localStorage.getItem(DRILL_FILTER_KEY);
+    return v === "all" || (v && Charts.MODULE_LABEL[v]) ? v : "all";
+  }
+
+  function renderDrillFilter() {
+    const wrap = $("#drill-filter");
+    wrap.innerHTML = "";
+    const current = drillFilter();
+    const options = [["all", "全部"]].concat(
+      Object.keys(Charts.MODULE_LABEL).map(k => [k, Charts.MODULE_LABEL[k]]));
+    for (const [key, label] of options) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "drill-chip" + (key === current ? " active" : "");
+      btn.textContent = label;
+      btn.addEventListener("click", function () {
+        localStorage.setItem(DRILL_FILTER_KEY, key);
+        refresh();
+      });
+      wrap.appendChild(btn);
+    }
+  }
+
+  // 单模块的进步数字:按日聚合,最新 vs 上一次 vs 首练
+  function renderDrillStats(shown, filter) {
+    const box = $("#drill-stats");
+    if (filter === "all" || !shown.length) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+
+    const byDate = {};
+    for (const d of shown) {
+      const agg = byDate[d.date] || (byDate[d.date] = { total: 0, correct: 0 });
+      agg.total += d.total;
+      agg.correct += d.correct;
+    }
+    const dates = Object.keys(byDate).sort();
+    const acc = date => Math.round(byDate[date].correct / byDate[date].total * 100);
+    const latest = acc(dates[dates.length - 1]);
+
+    $("#ds-latest").textContent = latest + "%";
+
+    const prevEl = $("#ds-vs-prev");
+    prevEl.className = "drill-stat-delta";
+    if (dates.length >= 2) {
+      const diff = latest - acc(dates[dates.length - 2]);
+      prevEl.textContent = diff === 0 ? "持平 较上次"
+        : (diff > 0 ? "↑ " : "↓ ") + Math.abs(diff) + " 较上次";
+      prevEl.classList.add(diff > 0 ? "delta-pos" : "delta-neg");
+    } else {
+      prevEl.textContent = "";
+    }
+
+    $("#ds-vs-first").textContent = dates.length >= 2
+      ? acc(dates[0]) + "% → " + latest + "%"
+      : "首练日";
+
+    const questions = shown.reduce((s, d) => s + d.total, 0);
+    $("#ds-total").textContent = questions + " 题 · " + shown.length + " 组";
+  }
+
   // ---------- 渲染:学习轨迹 ----------
 
   async function renderTrack() {
@@ -582,17 +652,25 @@
       bgrid.appendChild(el);
     }
 
-    // 专项刷题走势
-    const hasDrills = drills.length > 0;
+    // 专项刷题看板:全部总览,或选中单个模块只看它的走势与进步
+    renderDrillFilter();
+    const dFilter = drillFilter();
+    const shown = dFilter === "all" ? drills : drills.filter(d => d.module === dFilter);
+
+    const hasDrills = shown.length > 0;
     $("#drill-chart").parentElement.style.display = hasDrills ? "" : "none";
     $("#drill-chart-empty").hidden = hasDrills;
-    if (hasDrills) Charts.renderDrillChart($("#drill-chart"), drills);
+    $("#drill-chart-empty").textContent = dFilter === "all"
+      ? "录入几组专项练习后,这里会画出各模块正确率的走势。"
+      : "还没有「" + Charts.MODULE_LABEL[dFilter] + "」的刷题记录。";
+    if (hasDrills) Charts.renderDrillChart($("#drill-chart"), shown);
+    renderDrillStats(shown, dFilter);
 
-    // 刷题记录表(最近的在上面)
+    // 刷题记录表(最近的在上面,跟随上面的模块筛选)
     const dtbody = $("#drill-table tbody");
     dtbody.innerHTML = "";
     $("#drill-empty").hidden = hasDrills;
-    for (const d of drills.slice().reverse().slice(0, 30)) {
+    for (const d of shown.slice().reverse().slice(0, 30)) {
       const tr = document.createElement("tr");
       const acc = Math.round(d.correct / d.total * 100);
       tr.innerHTML = "<td>" + fmtDate(d.date) + "</td>"
