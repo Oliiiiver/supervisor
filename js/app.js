@@ -48,7 +48,7 @@
     if (!btn) return;
     activateTab(btn.dataset.tab);
     history.replaceState(null, "", "#" + btn.dataset.tab);
-    if (btn.dataset.tab === "board") markBoardSeen();
+    updateBoardDot(); // 进出留言板时同步角标显隐
   });
 
   // 支持 #rewards / #track / #board 直达
@@ -716,33 +716,22 @@
     if (!$("#exam-form-date").value) $("#exam-form-date").value = todayHer();
   }
 
-  // ---------- 留言板未读角标 ----------
+  // ---------- 留言板新消息角标 ----------
 
-  // 已读状态记在各自设备本地:他看自己的留言,清不掉她那边的角标,
-  // 只有她本人打开留言板,她设备上的 +N 才会消失(反之亦然)
-  const BOARD_SEEN_KEY = "supervisor-board-seen";
+  // 不记已读状态:角标 = "24 小时内有对方的新留言",一天后自动熄灭。
+  // 正开着留言板时不显示(人就在看)
   let lastMessages = [];
-
-  function markBoardSeen() {
-    if (lastMessages.length) {
-      const latest = lastMessages.reduce(
-        (m, x) => x.created_at > m ? x.created_at : m, "");
-      localStorage.setItem(BOARD_SEEN_KEY, latest);
-    }
-    $("#board-dot").hidden = true;
-  }
 
   function updateBoardDot() {
     const mine = isSup() ? "sup" : "her";
-    const seen = localStorage.getItem(BOARD_SEEN_KEY) || "";
-    const unread = lastMessages.filter(
-      m => (m.author || "her") !== mine && m.created_at > seen).length;
-    if (document.querySelector('.tab[data-tab="board"]').classList.contains("active")) {
-      return markBoardSeen(); // 正开着留言板,来一条看一条
-    }
+    const cutoff = Date.now() - 24 * 3600e3;
+    const fresh = lastMessages.filter(
+      m => (m.author || "her") !== mine && Date.parse(m.created_at) > cutoff).length;
+    const onBoard = document.querySelector('.tab[data-tab="board"]')
+      .classList.contains("active");
     const dot = $("#board-dot");
-    dot.hidden = unread === 0;
-    if (unread) dot.textContent = "+" + unread;
+    dot.hidden = onBoard || fresh === 0;
+    if (fresh) dot.textContent = "+" + fresh;
   }
 
   // 安静的后台刷新:页面回到前台 + 每 5 分钟拉一次留言,只动角标不打扰
