@@ -282,6 +282,14 @@ window.Store = (function () {
       return sb(db.from("messages").select("*").order("created_at", { ascending: false }));
     },
 
+    // 静默版:后台轮询角标用,失败不弹窗
+    async listMessagesQuiet() {
+      if (mode === "local") return this.listMessages();
+      const { data, error } = await db
+        .from("messages").select("*").order("created_at", { ascending: false });
+      return error ? null : data;
+    },
+
     async addMessage(text, author) {
       if (mode === "local") {
         cache.messages.push({

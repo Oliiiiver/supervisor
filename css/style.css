@@ -100,6 +100,18 @@ body {
 
 .tab:hover { color: var(--ink); }
 
+/* 留言板未读角标:各自设备只统计对方的新留言,打开留言板即清 */
+.tab-dot {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 0 5px;
+  vertical-align: 1px;
+}
+
 .tab.active {
   color: var(--ink);
   font-weight: 600;

@@ -48,6 +48,7 @@
     if (!btn) return;
     activateTab(btn.dataset.tab);
     history.replaceState(null, "", "#" + btn.dataset.tab);
+    if (btn.dataset.tab === "board") markBoardSeen();
   });
 
   // 支持 #rewards / #track / #board 直达
@@ -715,10 +716,54 @@
     if (!$("#exam-form-date").value) $("#exam-form-date").value = todayHer();
   }
 
+  // ---------- 留言板未读角标 ----------
+
+  // 已读状态记在各自设备本地:他看自己的留言,清不掉她那边的角标,
+  // 只有她本人打开留言板,她设备上的 +N 才会消失(反之亦然)
+  const BOARD_SEEN_KEY = "supervisor-board-seen";
+  let lastMessages = [];
+
+  function markBoardSeen() {
+    if (lastMessages.length) {
+      const latest = lastMessages.reduce(
+        (m, x) => x.created_at > m ? x.created_at : m, "");
+      localStorage.setItem(BOARD_SEEN_KEY, latest);
+    }
+    $("#board-dot").hidden = true;
+  }
+
+  function updateBoardDot() {
+    const mine = isSup() ? "sup" : "her";
+    const seen = localStorage.getItem(BOARD_SEEN_KEY) || "";
+    const unread = lastMessages.filter(
+      m => (m.author || "her") !== mine && m.created_at > seen).length;
+    if (document.querySelector('.tab[data-tab="board"]').classList.contains("active")) {
+      return markBoardSeen(); // 正开着留言板,来一条看一条
+    }
+    const dot = $("#board-dot");
+    dot.hidden = unread === 0;
+    if (unread) dot.textContent = "+" + unread;
+  }
+
+  // 安静的后台刷新:页面回到前台 + 每 5 分钟拉一次留言,只动角标不打扰
+  async function pollBoard() {
+    const msgs = await Store.listMessagesQuiet();
+    if (!msgs) return; // 网络抖动就算了,下次再试
+    lastMessages = msgs;
+    updateBoardDot();
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) pollBoard();
+  });
+  setInterval(pollBoard, 5 * 60 * 1000);
+
   // ---------- 渲染:留言板 ----------
 
   async function renderBoard() {
     const messages = await Store.listMessages();
+    lastMessages = messages;
+    updateBoardDot();
     const ul = $("#msg-list");
     ul.innerHTML = "";
     $("#msg-empty").hidden = messages.length > 0;
