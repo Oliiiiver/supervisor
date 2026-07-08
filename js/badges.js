@@ -300,9 +300,9 @@ window.Badges = (function () {
     {
       id: "both-150",
       name: "同舟共济",
-      desc: "两人同日打卡累计 150 天",
+      desc: "两人同日打卡累计 120 天",
       icon: icon('<path d="M4 21h24l-4 6H8z"/><path d="M16 4v15M16 6l8 9H16"/>'),
-      test: ctx => ctx.bothDays >= 150,
+      test: ctx => ctx.bothDays >= 120,
     },
   ];
 
