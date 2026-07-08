@@ -749,6 +749,15 @@
 
   // ---------- 渲染:留言板 ----------
 
+  // 留言时间按"留言人当地时间"显示:他的按伦敦、她的按北京,
+  // 谁看都一样;悬停显示另一边时区的换算
+  function msgTime(m, tz) {
+    const d = new Date(m.created_at);
+    return dateInTZ(tz, d).replace(/-/g, "/") + " " + new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(d);
+  }
+
   async function renderBoard() {
     const messages = await Store.listMessages();
     lastMessages = messages;
@@ -763,7 +772,11 @@
 
       const meta = document.createElement("div");
       meta.className = "msg-meta";
-      meta.textContent = m.created_at.slice(0, 10).replace(/-/g, "/");
+      const fromSup = (m.author || "her") === "sup";
+      meta.textContent = msgTime(m, fromSup ? TZ_SUP : TZ_HER);
+      meta.title = fromSup
+        ? "北京时间 " + msgTime(m, TZ_HER)
+        : "伦敦时间 " + msgTime(m, TZ_SUP);
 
       if ((m.author || "her") === "sup") {
         const tag = document.createElement("span");
