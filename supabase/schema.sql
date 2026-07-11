@@ -25,6 +25,7 @@ create table tasks (
   done      boolean not null default false,
   done_at   timestamptz,
   dismissed boolean not null default false, -- 逾期账被监督员销掉
+  multiplier int check (multiplier in (1, 2, 10)), -- 幸运倍数,首次完成时抽签落库;null = 还没抽过
   liked     boolean not null default false, -- 监督员点赞
   created_at timestamptz not null default now(), -- 「一日之际」成就用
   created_by text not null default 'her' check (created_by in ('her', 'sup')) -- 创建者,防监督员误触发成就

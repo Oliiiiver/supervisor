@@ -67,24 +67,33 @@
 
   // ---------- 小工具 ----------
 
-  // 积分 = 完成情况 × 赋分,按完成那天(北京时间)聚合,每日上限 100 分。
+  // 积分 = 完成情况 × 赋分 × 幸运倍数,按完成那天(北京时间)聚合,每日上限 100 分。
   // 全部由任务实时推导,不落库:事后赋分、改分、取消打卡,积分自动跟着变,
   // 不存副本就永远不会不一致(流水表里的"任务"行也是现算出来的)
   function earnDay(t) {
     return t.done_at ? dateInTZ(TZ_HER, new Date(t.done_at)) : t.date;
   }
 
-  // date → { raw, capped, n } 只统计她的已完成任务
+  // 首次完成任务时抽签:1% 十倍,20% 双倍。结果落库,取消重勾不重抽
+  // (不然反复勾选就能刷出十倍)。倍数乘在赋分上,事后赋分同样享受
+  function rollLuck() {
+    const r = Math.random();
+    return r < 0.01 ? 10 : r < 0.21 ? 2 : 1;
+  }
+
+  // date → { raw, bonus, capped, n } 只统计她的已完成任务。
+  // 日上限只管基础分;幸运加成(倍数多出来的部分)不受上限,不然十倍就名存实亡
   function earningsByDay(tasks) {
     const byDay = {};
     for (const t of tasks) {
       if (t.owner !== "her" || !t.done || t.points <= 0) continue;
       const d = earnDay(t);
-      const e = byDay[d] || (byDay[d] = { raw: 0, n: 0 });
+      const e = byDay[d] || (byDay[d] = { raw: 0, bonus: 0, n: 0 });
       e.raw += t.points;
+      e.bonus += t.points * ((t.multiplier || 1) - 1);
       e.n++;
     }
-    for (const d in byDay) byDay[d].capped = Math.min(DAILY_CAP, byDay[d].raw);
+    for (const d in byDay) byDay[d].capped = Math.min(DAILY_CAP, byDay[d].raw) + byDay[d].bonus;
     return byDay;
   }
 
@@ -197,8 +206,15 @@
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
         if (t.owner === "her") {
-          await Store.setTaskDone(t, true);
+          const mult = t.multiplier || rollLuck(); // 已抽过就沿用,没抽过现抽
+          await Store.setTaskDone(t, true, t.multiplier ? undefined : mult);
           Juice.burst(cx, cy);
+          if (mult >= 10) {
+            Juice.bigBurst();
+            Juice.floatText(cx + 24, cy - 26, "×10 十倍暴击!");
+          } else if (mult === 2) {
+            Juice.floatText(cx + 24, cy - 26, "×2 双倍!");
+          }
           if (t.points > 0) {
             // 这一勾实际带来的分 = 含它时今天的分 − 不含它时今天的分(日上限内)
             const fresh = await Store.listTasks();
@@ -226,6 +242,15 @@
     }
 
     if (t.owner === "her") {
+      // 抽中过倍数的任务挂个小签;待赋分也挂,让她知道这一签已经中了
+      const luck = (t.multiplier || 1) > 1 ? (function () {
+        const chip = document.createElement("span");
+        chip.className = "luck-chip" + (t.multiplier >= 10 ? " luck-ten" : "");
+        chip.textContent = "×" + t.multiplier;
+        chip.title = t.multiplier >= 10 ? "十倍积分!" : "双倍积分";
+        return chip;
+      })() : null;
+
       if (isSup()) {
         const pts = document.createElement("input");
         pts.type = "number";
@@ -233,16 +258,18 @@
         pts.min = 0;
         pts.max = 100;
         pts.value = t.points;
-        pts.title = "分值(改完自动保存)";
+        pts.title = "分值(改完自动保存)" + (luck ? ",实得 = 分值 × " + t.multiplier : "");
         pts.addEventListener("change", async function () {
           await Store.updateTaskPoints(t.id, Math.min(parseInt(pts.value, 10) || 0, DAILY_CAP));
           refresh(); // 积分实时推导,事后赋分不需要补账
         });
+        if (luck) li.append(luck);
         li.append(pts);
       } else {
         const pts = document.createElement("span");
         pts.className = "task-pts";
-        pts.textContent = t.points > 0 ? "+" + t.points : "待赋分";
+        pts.textContent = t.points > 0 ? "+" + t.points * (t.multiplier || 1) : "待赋分";
+        if (luck) li.append(luck);
         li.append(pts);
       }
     }
@@ -326,7 +353,11 @@
 
     $("#today-done").textContent = doneHer.length;
     $("#today-total").textContent = todaysHer.length;
-    $("#today-points").textContent = "今日获得 " + earned + " / " + DAILY_CAP + " 分";
+    const todayE = earningsByDay(tasks)[tHer];
+    const todayBonus = todayE ? todayE.bonus : 0;
+    $("#today-points").textContent = todayBonus > 0
+      ? "今日获得 " + earned + " 分(含幸运 +" + todayBonus + ")"
+      : "今日获得 " + earned + " / " + DAILY_CAP + " 分";
 
     // 今日全清横幅(只在"刚刚达成"的那一下庆祝,页面刷新不重播)
     const isAllClear = todaysHer.length > 0 && doneHer.length === todaysHer.length;
@@ -415,9 +446,17 @@
       btn.disabled = balance < r.cost;
       btn.addEventListener("click", async function () {
         if (!confirm("花 " + r.cost + " 分兑换「" + r.title + "」?")) return;
+        const free = Math.random() < 0.2; // 兑换也有彩票:20% 免单,不消耗积分
         await Store.addLedger({
-          delta: -r.cost, reason: "兑换:" + r.title, kind: "redeem", reward_id: r.id,
+          delta: free ? 0 : -r.cost,
+          reason: "兑换:" + r.title + (free ? "(幸运免单)" : ""),
+          kind: "redeem", reward_id: r.id,
         });
+        if (free) {
+          const rect = btn.getBoundingClientRect();
+          Juice.bigBurst();
+          Juice.floatText(rect.left + rect.width / 2, rect.top, "幸运免单!");
+        }
         refresh();
       });
 
@@ -429,7 +468,11 @@
     const byDay = earningsByDay(tasks);
     const rows = [];
     for (const d in byDay) {
-      rows.push({ date: d, kind: "任务", reason: "完成任务 × " + byDay[d].n, delta: byDay[d].capped });
+      rows.push({
+        date: d, kind: "任务", delta: byDay[d].capped,
+        reason: "完成任务 × " + byDay[d].n
+          + (byDay[d].bonus > 0 ? "(含幸运 +" + byDay[d].bonus + ")" : ""),
+      });
     }
     for (const e of redeems) {
       rows.push({
@@ -445,10 +488,11 @@
     for (const r of rows.slice(0, 30)) {
       const tr = document.createElement("tr");
       const sign = r.delta > 0 ? "+" : "";
+      const cls = r.delta > 0 ? "delta-pos" : r.delta < 0 ? "delta-neg" : ""; // 免单 = 0,不红不绿
       tr.innerHTML = "<td>" + fmtDate(r.date) + "</td>"
         + "<td></td>"
         + '<td><span class="kind-tag">' + r.kind + "</span></td>"
-        + '<td class="num ' + (r.delta > 0 ? "delta-pos" : "delta-neg") + '">'
+        + '<td class="num ' + cls + '">'
         + sign + r.delta + "</td>";
       tr.children[1].textContent = r.reason;
       tbody.appendChild(tr);
@@ -593,6 +637,7 @@
       herDoneCount: tasks.filter(t => t.owner === "her" && t.done).length,
       allClearDays: allClearDays(tasks),
       maxAllClearStreak: maxAllClearStreak(tasks),
+      luckyTen: tasks.some(t => t.owner === "her" && (t.multiplier || 1) >= 10),
       redeemCount: ledger.filter(e => e.kind === "redeem").length,
       spentPoints: ledger.filter(e => e.kind === "redeem").reduce((s, e) => s - e.delta, 0),
       rewardCountAll: rewardCountAll,

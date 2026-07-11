@@ -85,6 +85,13 @@ window.Badges = (function () {
       test: ctx => ctx.spentPoints >= 10000,
     },
     {
+      id: "lucky-star",
+      name: "幸运之星",
+      desc: "完成任务时触发十倍积分(1% 的概率)",
+      icon: icon('<path d="M16 4l3.5 7.4 8.5 1-6 6 1.5 8.6-7.5-4-7.5 4 1.5-8.6-6-6 8.5-1z"/>'),
+      test: ctx => ctx.luckyTen,
+    },
+    {
       id: "work-rest",
       name: "劳逸结合",
       desc: "累计兑换 7 次奖品",

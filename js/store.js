@@ -142,17 +142,17 @@ window.Store = (function () {
       await sb(db.from("tasks").delete().eq("id", id));
     },
 
-    // 勾选/取消勾选任务(积分 = 完成 × 赋分,由前端实时推导,不再记流水)
-    async setTaskDone(task, done) {
+    // 勾选/取消勾选任务(积分 = 完成 × 赋分 × 幸运倍数,由前端实时推导,不再记流水)
+    // multiplier 只在首次完成时随抽签结果传入并落库;取消重勾不再传,沿用已抽结果
+    async setTaskDone(task, done, multiplier) {
+      const patch = { done: done, done_at: done ? new Date().toISOString() : null };
+      if (done && multiplier != null) patch.multiplier = multiplier;
       if (mode === "local") {
         const t = cache.tasks.find(x => x.id === task.id);
-        t.done = done;
-        t.done_at = done ? new Date().toISOString() : null;
+        Object.assign(t, patch);
         return save();
       }
-      await sb(db.from("tasks").update({
-        done: done, done_at: done ? new Date().toISOString() : null,
-      }).eq("id", task.id));
+      await sb(db.from("tasks").update(patch).eq("id", task.id));
     },
 
     // ---------- 奖品与积分 ----------
