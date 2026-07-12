@@ -803,6 +803,22 @@
     }).format(d);
   }
 
+  // 引用式回复(微信风格):不嵌套,时间线平铺,回复的留言上方带一条原文引用
+  let replyTo = null;
+
+  function excerpt(s) {
+    return s.length > 40 ? s.slice(0, 40) + "…" : s;
+  }
+
+  function setReplyTo(m) {
+    replyTo = m;
+    $("#reply-hint").hidden = !m;
+    if (m) {
+      $("#reply-hint-text").textContent = "回复:" + excerpt(m.text);
+      $("#board-text").focus();
+    }
+  }
+
   async function renderBoard() {
     const messages = await Store.listMessages();
     lastMessages = messages;
@@ -814,6 +830,7 @@
     for (const m of messages) {
       const li = document.createElement("li");
       li.className = "msg-item";
+      li.dataset.id = m.id;
 
       const meta = document.createElement("div");
       meta.className = "msg-meta";
@@ -830,6 +847,13 @@
         meta.appendChild(tag);
       }
 
+      const reply = document.createElement("button");
+      reply.type = "button";
+      reply.className = "msg-reply";
+      reply.textContent = "回复";
+      reply.addEventListener("click", function () { setReplyTo(m); });
+      meta.appendChild(reply);
+
       if (isSup()) {
         const del = document.createElement("button");
         del.className = "task-del";
@@ -843,11 +867,32 @@
         meta.appendChild(del);
       }
 
+      li.appendChild(meta);
+
+      if (m.reply_to != null) {
+        const parent = messages.find(x => x.id === m.reply_to);
+        const quote = document.createElement("div");
+        quote.className = "msg-quote";
+        quote.textContent = parent ? excerpt(parent.text) : "原留言已删除";
+        if (parent) {
+          quote.title = "点击查看原文";
+          quote.addEventListener("click", function () {
+            const target = ul.querySelector('[data-id="' + parent.id + '"]');
+            if (!target) return;
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+            target.classList.remove("flash");
+            void target.offsetWidth; // 重置动画,连点也能再闪一次
+            target.classList.add("flash");
+          });
+        }
+        li.appendChild(quote);
+      }
+
       const text = document.createElement("div");
       text.className = "msg-text";
       text.textContent = m.text;
 
-      li.append(meta, text);
+      li.appendChild(text);
       ul.appendChild(li);
     }
   }
@@ -947,10 +992,13 @@
     e.preventDefault();
     const text = $("#board-text").value.trim();
     if (!text) return;
-    await Store.addMessage(text, isSup() ? "sup" : "her");
+    await Store.addMessage(text, isSup() ? "sup" : "her", replyTo ? replyTo.id : null);
     $("#board-text").value = "";
+    setReplyTo(null);
     refresh();
   });
+
+  $("#reply-cancel").addEventListener("click", function () { setReplyTo(null); });
 
   $("#award-ashore").addEventListener("click", async function () {
     if (!confirm("确认她已经上岸,颁发「一鸣惊人」?此操作不可撤销。")) return;

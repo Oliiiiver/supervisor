@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Supervisor · 考公陪跑台</title>
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
-<link rel="stylesheet" href="css/style.css?v=8">
+<link rel="stylesheet" href="css/style.css?v=9">
 </head>
 <body>
 
@@ -248,6 +248,10 @@
     <div class="card">
       <h2>留言板 <span class="h2-note">对这个工具有什么需求和改进想法,直接写在这里</span></h2>
       <form class="board-form" id="board-form">
+        <div class="reply-hint" id="reply-hint" hidden>
+          <span id="reply-hint-text"></span>
+          <button type="button" class="task-del" id="reply-cancel" title="取消回复">×</button>
+        </div>
         <textarea id="board-text" rows="3" placeholder="比如:希望任务可以按周批量安排 / 热力图能不能点开看当天做了什么…" required></textarea>
         <button type="submit">留言</button>
       </form>
@@ -266,13 +270,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=8"></script>
-<script src="js/demo-data.js?v=8"></script>
-<script src="js/store.js?v=8"></script>
-<script src="js/charts.js?v=8"></script>
-<script src="js/badges.js?v=8"></script>
-<script src="js/juice.js?v=8"></script>
-<script src="js/pomodoro.js?v=8"></script>
-<script src="js/app.js?v=8"></script>
+<script src="js/config.js?v=9"></script>
+<script src="js/demo-data.js?v=9"></script>
+<script src="js/store.js?v=9"></script>
+<script src="js/charts.js?v=9"></script>
+<script src="js/badges.js?v=9"></script>
+<script src="js/juice.js?v=9"></script>
+<script src="js/pomodoro.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
 </body>
 </html>

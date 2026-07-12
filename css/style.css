@@ -847,6 +847,50 @@ button:disabled {
 
 .msg-text { white-space: pre-wrap; }
 
+/* 引用式回复:留言里的原文引用条 + 输入框上方的"正在回复"提示条 */
+.msg-reply {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font-size: 11px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.msg-reply:hover { color: var(--accent); }
+
+.msg-quote {
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--neutral);
+  border-left: 2px solid var(--accent-soft);
+  padding: 4px 8px;
+  margin: 2px 0 6px;
+  cursor: pointer;
+}
+
+.reply-hint {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--neutral);
+  border-left: 2px solid var(--accent);
+  padding: 4px 8px;
+}
+
+.reply-hint span { flex: 1; }
+
+.msg-item.flash { animation: msg-flash 1.2s ease-out; }
+
+@keyframes msg-flash {
+  0% { background: var(--neutral); }
+  100% { background: transparent; }
+}
+
 /* ---------- 成就解锁弹窗 ---------- */
 
 .juice-toast {

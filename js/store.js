@@ -290,15 +290,18 @@ window.Store = (function () {
       return error ? null : data;
     },
 
-    async addMessage(text, author) {
+    async addMessage(text, author, replyTo) {
       if (mode === "local") {
         cache.messages.push({
           id: nextId("message"), text: text, author: author || "her",
+          reply_to: replyTo || null,
           created_at: new Date().toISOString(),
         });
         return save();
       }
-      await sb(db.from("messages").insert({ text: text, author: author || "her" }));
+      await sb(db.from("messages").insert({
+        text: text, author: author || "her", reply_to: replyTo || null,
+      }));
     },
 
     async deleteMessage(id) {

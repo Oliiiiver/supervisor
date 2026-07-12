@@ -76,6 +76,7 @@ create table messages (
   id         bigint generated always as identity primary key,
   text       text not null,
   author     text not null default 'her' check (author in ('her', 'sup')),
+  reply_to   bigint references messages (id) on delete set null, -- 引用式回复;原文删除则引用置空
   created_at timestamptz not null default now()
 );
 
