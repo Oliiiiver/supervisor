@@ -17,6 +17,7 @@ window.DemoData = (function () {
         { id: 4, name: "定时刷题", sort: 4 },
       ],
       tasks: [],
+      goals: [],
       rewards: [
         { id: 1, title: "休息半天", cost: 500, active: true },
       ],
@@ -25,7 +26,7 @@ window.DemoData = (function () {
       drills: [],
       messages: [],
       badges: [],   // 已解锁成就 id(解锁即永久)
-      seq: { task: 1, ledger: 1, reward: 2, exam: 1, drill: 1, message: 1 },
+      seq: { task: 1, goal: 1, ledger: 1, reward: 2, exam: 1, drill: 1, message: 1 },
     };
   }
 

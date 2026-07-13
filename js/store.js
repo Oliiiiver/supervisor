@@ -123,6 +123,36 @@ window.Store = (function () {
         .eq("owner", "sup").eq("done", false).eq("dismissed", false).lt("date", tSup));
     },
 
+    // ---------- 任务目标(钉在任务列上方的阶段主线) ----------
+
+    async listGoals() {
+      if (mode === "local") return (cache.goals || []).slice();
+      return sb(db.from("goals").select("*").order("id"));
+    },
+
+    async addGoal(g) {
+      if (mode === "local") {
+        cache.goals = cache.goals || [];
+        cache.seq.goal = cache.seq.goal || 1;
+        cache.goals.push({
+          id: nextId("goal"), owner: g.owner, text: g.text, due: g.due,
+          created_at: new Date().toISOString(),
+        });
+        return save();
+      }
+      await sb(db.from("goals").insert(g));
+    },
+
+    // 随时改内容和截止日,不必删了重写;到期只是不再显示,记录保留
+    async updateGoal(id, patch) {
+      if (mode === "local") {
+        const g = (cache.goals || []).find(x => x.id === id);
+        if (g) Object.assign(g, patch);
+        return save();
+      }
+      await sb(db.from("goals").update(patch).eq("id", id));
+    },
+
     async setTaskLiked(id, liked) {
       if (mode === "local") {
         const t = cache.tasks.find(x => x.id === id);

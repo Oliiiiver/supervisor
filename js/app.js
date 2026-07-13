@@ -289,14 +289,106 @@
     return li;
   }
 
+  // ---------- 任务目标(阶段主线) ----------
+
+  // 钉在任务列顶上的主线:这段时间每天的任务都在推进它,不用天天重写。
+  // 原地可编辑(内容和截止日都能改);过了当事人时区的截止日就自动消失,记录保留
+  function renderGoal(slotId, goals, owner, today) {
+    const slot = $(slotId);
+    slot.innerHTML = "";
+    const active = goals
+      .filter(g => g.owner === owner && g.due >= today)
+      .sort((a, b) => b.id - a.id)[0];
+
+    function showForm(g) {
+      const f = document.createElement("form");
+      f.className = "goal-form";
+
+      const text = document.createElement("textarea");
+      text.rows = 2;
+      text.required = true;
+      text.placeholder = "这段时间的主线,如:完成文献综述初稿";
+      text.value = g ? g.text : "";
+
+      const row = document.createElement("div");
+      row.className = "goal-form-row";
+      const date = document.createElement("input");
+      date.type = "date";
+      date.required = true;
+      date.value = g ? g.due : "";
+      date.min = today; // 想提前收线就把截止日改成今天,明天自动消失
+      date.title = "最后一天(含当天),过了自动消失";
+      const save = document.createElement("button");
+      save.type = "submit";
+      save.textContent = g ? "保存" : "钉上";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = "取消";
+      cancel.addEventListener("click", function () {
+        renderGoal(slotId, goals, owner, today);
+      });
+      row.append(date, save, cancel);
+      f.append(text, row);
+
+      f.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const v = text.value.trim();
+        if (!v) return;
+        if (g) await Store.updateGoal(g.id, { text: v, due: date.value });
+        else await Store.addGoal({ owner: owner, text: v, due: date.value });
+        refresh();
+      });
+
+      slot.innerHTML = "";
+      slot.appendChild(f);
+      text.focus();
+    }
+
+    if (active) {
+      const box = document.createElement("div");
+      box.className = "goal-banner";
+
+      const meta = document.createElement("div");
+      meta.className = "goal-meta";
+      const left = Math.round((Date.parse(active.due) - Date.parse(today)) / 86400000);
+      const label = document.createElement("span");
+      label.textContent = "任务目标 · 至 " + fmtDate(active.due)
+        + (left === 0 ? " · 最后一天" : " · 还剩 " + left + " 天");
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "goal-edit";
+      edit.textContent = "编辑";
+      edit.addEventListener("click", function () { showForm(active); });
+      meta.append(label, edit);
+
+      const body = document.createElement("div");
+      body.className = "goal-text";
+      body.textContent = active.text;
+
+      box.append(meta, body);
+      slot.appendChild(box);
+    } else {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "goal-add";
+      add.textContent = "+ 设定任务目标";
+      add.title = "接下来一段时间的主线,每天的任务都在推进它";
+      add.addEventListener("click", function () { showForm(null); });
+      slot.appendChild(add);
+    }
+  }
+
   async function renderPlan() {
     const tHer = todayHer();
     const tSup = todaySup();
     // 逾期自清:昨天没做完的任务今天自动消失(软删除,全清判定仍算数)
     await Store.dismissOverdue(tHer, tSup);
-    const [settings, phases, tasks] = await Promise.all([
-      Store.getSettings(), Store.listPhases(), Store.listTasks(),
+    const [settings, phases, tasks, goals] = await Promise.all([
+      Store.getSettings(), Store.listPhases(), Store.listTasks(), Store.listGoals(),
     ]);
+
+    renderGoal("#goal-her", goals, "her", tHer);
+    renderGoal("#goal-sup", goals, "sup", tSup);
 
     // 倒计时(考试在国内,按北京时间算)
     if (settings.exam_date) {

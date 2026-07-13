@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Supervisor · 考公陪跑台</title>
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 
@@ -65,6 +65,7 @@
       <div class="task-columns">
         <div class="task-col">
           <h3>备考任务</h3>
+          <div class="goal-slot" id="goal-her"></div>
           <ul class="task-list" id="task-list-her"></ul>
           <p class="empty-hint" id="task-empty-her" hidden>今天还没安排,加一个吧。</p>
           <form class="col-form" id="task-form-her">
@@ -76,6 +77,7 @@
         </div>
         <div class="task-col">
           <h3>陪跑任务</h3>
+          <div class="goal-slot" id="goal-sup"></div>
           <ul class="task-list" id="task-list-sup"></ul>
           <p class="empty-hint" id="task-empty-sup" hidden>监督员今天还没安排任务。</p>
           <form class="col-form" id="task-form-sup">
@@ -270,13 +272,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=9"></script>
-<script src="js/demo-data.js?v=9"></script>
-<script src="js/store.js?v=9"></script>
-<script src="js/charts.js?v=9"></script>
-<script src="js/badges.js?v=9"></script>
-<script src="js/juice.js?v=9"></script>
-<script src="js/pomodoro.js?v=9"></script>
-<script src="js/app.js?v=9"></script>
+<script src="js/config.js?v=10"></script>
+<script src="js/demo-data.js?v=10"></script>
+<script src="js/store.js?v=10"></script>
+<script src="js/charts.js?v=10"></script>
+<script src="js/badges.js?v=10"></script>
+<script src="js/juice.js?v=10"></script>
+<script src="js/pomodoro.js?v=10"></script>
+<script src="js/app.js?v=10"></script>
 </body>
 </html>

@@ -71,6 +71,15 @@ create table mock_exams (
   notes    text not null default ''
 );
 
+-- 任务目标:钉在任务列上方的阶段主线(每天的任务都在推进它),到期自动消失
+create table goals (
+  id         bigint generated always as identity primary key,
+  owner      text not null check (owner in ('her', 'sup')),
+  text       text not null,
+  due        date not null,  -- 最后一天(含当天,按当事人时区),过了就不再显示
+  created_at timestamptz not null default now()
+);
+
 -- 留言板
 create table messages (
   id         bigint generated always as identity primary key,
