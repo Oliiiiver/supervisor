@@ -147,7 +147,9 @@ window.Charts = (function () {
   // 日期运算全部走 UTC,避免受浏览器本地时区影响。
   function renderHeatmap(container, tasks, weeks, anchorISO) {
     const doneByDate = {};
+    const totalByDate = {}; // 含逾期未做的(软删除只是不显示,这里照实计数)
     for (const t of tasks) {
+      totalByDate[t.date] = (totalByDate[t.date] || 0) + 1;
       if (t.done) doneByDate[t.date] = (doneByDate[t.date] || 0) + 1;
     }
 
@@ -169,10 +171,14 @@ window.Charts = (function () {
         html += '<span class="hm-cell future"></span>';
       } else {
         const n = doneByDate[key] || 0;
+        const total = totalByDate[key] || 0;
         const lv = Math.min(n, 4);
+        // 时差下对方睡前看不到自己后来补完的进度,悬停给出全清结论
+        let tip = n ? "完成 " + n + " / " + total + " 个任务" : "未打卡";
+        if (n > 0 && n === total) tip += " · 当天任务已全清";
         html += '<span class="hm-cell lv' + lv + '" title="'
           + (d.getUTCMonth() + 1) + "月" + d.getUTCDate() + "日 · "
-          + (n ? "完成 " + n + " 个任务" : "未打卡") + '"></span>';
+          + tip + '"></span>';
       }
       d.setUTCDate(d.getUTCDate() + 1);
     }
