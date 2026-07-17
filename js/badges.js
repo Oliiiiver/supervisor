@@ -92,7 +92,7 @@ window.Badges = (function () {
       test: ctx => ctx.luckyTen,
     },
 
-    // 木瓜三连:兑奖券收藏进度(《诗经·木瓜》——投我以木瓜,报之以琼琚)
+    // 木瓜三连:兑奖券收藏进度(名字出处大家都懂,后一句故意不写)
     {
       id: "mugua",
       name: "投以木瓜",
