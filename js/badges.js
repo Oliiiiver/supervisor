@@ -91,6 +91,29 @@ window.Badges = (function () {
       icon: icon('<path d="M16 4l3.5 7.4 8.5 1-6 6 1.5 8.6-7.5-4-7.5 4 1.5-8.6-6-6 8.5-1z"/>'),
       test: ctx => ctx.luckyTen,
     },
+
+    // 木瓜三连:兑奖券收藏进度(《诗经·木瓜》——投我以木瓜,报之以琼琚)
+    {
+      id: "mugua",
+      name: "投以木瓜",
+      desc: "收获第 1 张兑奖券(投我以木瓜,报之以琼琚)",
+      icon: icon('<circle cx="16" cy="20" r="8"/><path d="M16 12v-5"/><path d="M16 9c2-3 5-3 7-1"/>'),
+      test: ctx => ctx.voucherCount >= 1,
+    },
+    {
+      id: "mutao",
+      name: "投以木桃",
+      desc: "收获第 4 张兑奖券(投我以木桃,报之以琼瑶)",
+      icon: icon('<path d="M16 27c-5 0-8-3-8-8 0-5 4-9 8-12 4 3 8 7 8 12 0 5-3 8-8 8z"/><path d="M16 14v8"/>'),
+      test: ctx => ctx.voucherCount >= 4,
+    },
+    {
+      id: "muli",
+      name: "投以木李",
+      desc: "收获第 8 张兑奖券(投我以木李,报之以琼玖)",
+      icon: icon('<circle cx="12" cy="22" r="5"/><circle cx="21" cy="18" r="5"/><path d="M12 17c-1-4 0-8 3-11"/><path d="M21 13c0-3 1-5 3-7"/>'),
+      test: ctx => ctx.voucherCount >= 8,
+    },
     {
       id: "work-rest",
       name: "劳逸结合",

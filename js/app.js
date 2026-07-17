@@ -733,6 +733,7 @@
       luckyTen: tasks.some(t => t.owner === "her" && (t.multiplier || 1) >= 10),
       redeemCount: ledger.filter(e => e.kind === "redeem").length,
       spentPoints: ledger.filter(e => e.kind === "redeem").reduce((s, e) => s - e.delta, 0),
+      voucherCount: vouchers.length, // 木瓜三连:兑奖券收藏进度
       rewardCountAll: rewardCountAll,
       module90: module90,
       drillCount: drills.length,
