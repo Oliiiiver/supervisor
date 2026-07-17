@@ -995,7 +995,14 @@
   // 开出一张兑奖券(考后兑神秘奖品)。领取记录落库,两台设备不会重复开箱。
 
   const MILESTONE_STEP = 1500;
-  const chest = { pending: [], latest: null, milestone: 0, clicks: 0, shown: null };
+  const chest = { pending: [], milestone: 0, clicks: 0, shown: null };
+
+  // 票根小图标:两侧撕票缺口 + 骑缝虚线
+  const STUB_SVG = '<svg viewBox="0 0 34 22" width="30" height="20" aria-hidden="true">'
+    + '<path d="M3 2 h28 a2 2 0 0 1 2 2 v4 a3 3 0 0 0 0 6 v4 a2 2 0 0 1 -2 2 h-28'
+    + ' a2 2 0 0 1 -2 -2 v-4 a3 3 0 0 0 0 -6 v-4 a2 2 0 0 1 2 -2 z" fill="var(--accent)"/>'
+    + '<line x1="23" y1="5" x2="23" y2="17" stroke="var(--surface)" stroke-width="1.6" stroke-dasharray="2.4 2"/>'
+    + '</svg>';
 
   function updateChestTile(cum, vouchers) {
     const claimed = new Set(vouchers.map(v => v.milestone));
@@ -1003,16 +1010,32 @@
     for (let m = MILESTONE_STEP; m <= cum; m += MILESTONE_STEP) {
       if (!claimed.has(m)) chest.pending.push(m);
     }
-    chest.latest = vouchers.slice().sort((a, b) => b.milestone - a.milestone)[0] || null;
 
-    // 惊喜留给她本人拆:监督员这边不呼吸也开不了箱,只能看已领的券
+    // 惊喜留给她本人拆:监督员这边不呼吸也开不了箱
     const tile = $("#cum-points-tile");
     const ready = chest.pending.length > 0 && !isSup();
     tile.classList.toggle("milestone-ready", ready);
-    tile.classList.toggle("tile-clickable", ready || !!chest.latest);
+    tile.classList.toggle("tile-clickable", ready);
     tile.title = ready ? "这个数字好像在发光…点点看?"
-      : chest.pending.length ? "有个宝箱在等她拆"
-      : chest.latest ? "查看兑奖券" : "";
+      : chest.pending.length ? "有个宝箱在等她拆" : "";
+
+    // 每领一张,数字下面多一枚票根,点开回看
+    const box = $("#voucher-stubs");
+    box.innerHTML = "";
+    const sorted = vouchers.slice().sort((a, b) => a.milestone - b.milestone);
+    for (const v of sorted) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "voucher-stub";
+      b.title = "兑奖券 · 累计 " + v.milestone + " 分";
+      b.innerHTML = STUB_SVG;
+      b.addEventListener("click", function (e) {
+        e.stopPropagation(); // 别顺手把宝箱也点开了
+        showVoucher(v);
+      });
+      box.appendChild(b);
+    }
+    box.hidden = sorted.length === 0;
   }
 
   function closeChest() {
@@ -1023,7 +1046,7 @@
     chest.milestone = milestone;
     chest.clicks = 0;
     $("#chest-svg").classList.remove("open");
-    $("#chest-hint").textContent = "听说连点三下,它就会打开";
+    $("#chest-wrap").classList.remove("shake-1", "shake-2");
     $("#chest-stage").hidden = false;
     $("#voucher-stage").hidden = true;
     $("#chest-overlay").hidden = false;
@@ -1037,29 +1060,32 @@
     $("#chest-overlay").hidden = false;
   }
 
+  // 印章素材:图片晚于券面加载完时补画一次
+  const sealImg = new Image();
+  sealImg.onload = function () {
+    if (chest.shown && !$("#voucher-stage").hidden) drawVoucher($("#voucher-canvas"), chest.shown);
+  };
+  sealImg.src = "img/seal.png";
+
   $("#cum-points-tile").addEventListener("click", function () {
     if (chest.pending.length && !isSup()) openChestModal(chest.pending[0]);
-    else if (chest.latest) showVoucher(chest.latest);
   });
 
+  // 不写说明文字:箱子自己会小幅抖动勾人来点,每点一下抖得更凶,第三下开
   $("#chest-wrap").addEventListener("click", async function () {
     const svg = $("#chest-svg");
     if (svg.classList.contains("open")) return;
 
     const wrap = $("#chest-wrap");
-    wrap.classList.remove("shake");
+    wrap.classList.remove("shake-1", "shake-2");
     void wrap.offsetWidth; // 重置动画,连点每下都晃
-    wrap.classList.add("shake");
-
     chest.clicks++;
-    if (chest.clicks < 3) {
-      $("#chest-hint").textContent = "再点 " + (3 - chest.clicks) + " 下!";
-      return;
-    }
+    wrap.classList.add(chest.clicks === 1 ? "shake-1" : "shake-2");
+    if (chest.clicks < 3) return;
 
     // 第三下:先落库再开箱(撞上另一台设备刚开过就静默收场,刷新后看券即可)
     const m = chest.milestone;
-    const serial = "SUP-" + todayHer().replace(/-/g, "") + "-" + m;
+    const serial = todayHer().replace(/-/g, "") + "-" + m;
     try {
       await Store.addVoucher({ milestone: m, serial: serial });
     } catch (e) {
@@ -1067,11 +1093,10 @@
       refresh();
       return;
     }
-    $("#chest-hint").textContent = "开了!";
     svg.classList.add("open");
     Juice.bigBurst();
     setTimeout(function () { showVoucher({ milestone: m, serial: serial }); }, 700);
-    refresh(); // 后台更新呼吸状态(也许还压着下一档)
+    refresh(); // 后台更新呼吸状态和票根(也许还压着下一档)
   });
 
   $("#chest-close").addEventListener("click", closeChest);
@@ -1089,7 +1114,7 @@
     const c = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height;
     const PAPER = "#faf8f2", INK = "#0b0b0b", INK2 = "#52514e", MUTED = "#898781",
-          ACCENT = "#2a78d6", HAIR = "#e1e0d9";
+          ACCENT = "#2a78d6", ACCENT_DEEP = "#1c5cab", HAIR = "#e1e0d9", AXIS = "#c3c2b7";
     const FONT = '"Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif';
     const SX = 640;   // 票根分割线
     const MX = 780;   // 主区左边距
@@ -1123,10 +1148,23 @@
     c.strokeStyle = INK;
     c.stroke();
 
-    // 票根:accent 色块(用外框路径裁剪,保住圆角)
+    // 主区暗纹(细点阵 + 右缘大菱形轮廓)与票根 accent 色块,同一次裁剪保住圆角
     c.save();
     rr(50, 50, W - 100, H - 100, 40);
     c.clip();
+    c.fillStyle = "rgba(11,11,11,0.03)";
+    for (let gy = 130; gy < H - 90; gy += 56) {
+      for (let gx = SX + 90; gx < W - 90; gx += 56) c.fillRect(gx, gy, 4, 4);
+    }
+    c.strokeStyle = "rgba(42,120,214,0.10)";
+    c.lineWidth = 3;
+    for (const s of [430, 300]) {
+      c.save();
+      c.translate(1955, 745);
+      c.rotate(Math.PI / 4);
+      c.strokeRect(-s / 2, -s / 2, s, s);
+      c.restore();
+    }
     c.fillStyle = ACCENT;
     c.fillRect(50, 50, SX - 50, H - 100);
     c.restore();
@@ -1135,35 +1173,33 @@
     c.strokeStyle = INK;
     c.stroke(); // 色块压过的边框描回来
 
-    // 票根内容(白字)
+    // 票根内容(白字):内框、上下对称菱形饰件、套印错位的大数字
     c.textAlign = "center";
-    c.fillStyle = "rgba(255,255,255,0.55)";
     c.strokeStyle = "rgba(255,255,255,0.55)";
     c.lineWidth = 3;
-    rr(100, 100, SX - 200, H - 200, 24);
+    rr(100, 100, SX - 150, H - 200, 24);
     c.stroke();
 
-    sq(305, 215, 20, "rgba(255,255,255,0.9)", 45);
-    sq(345, 215, 14, "rgba(255,255,255,0.6)", 45);
-    sq(265, 215, 14, "rgba(255,255,255,0.6)", 45);
+    sq(345, 215, 20, "rgba(255,255,255,0.9)", 45);
+    sq(385, 215, 14, "rgba(255,255,255,0.6)", 45);
+    sq(305, 215, 14, "rgba(255,255,255,0.6)", 45);
+    sq(345, H - 215, 20, "rgba(255,255,255,0.9)", 45);
+    sq(385, H - 215, 14, "rgba(255,255,255,0.6)", 45);
+    sq(305, H - 215, 14, "rgba(255,255,255,0.6)", 45);
 
-    c.fillStyle = "#ffffff";
     let fs = 210; // 数字大小自适应,别撑破票根
     c.font = "700 " + fs + "px " + FONT;
     while (c.measureText(String(v.milestone)).width > 430 && fs > 90) {
       fs -= 10;
       c.font = "700 " + fs + "px " + FONT;
     }
+    c.fillStyle = ACCENT_DEEP;
+    c.fillText(String(v.milestone), 352, 707); // 深蓝错位衬底,套印质感
+    c.fillStyle = "#ffffff";
     c.fillText(String(v.milestone), 345, 700);
     c.font = "400 44px " + FONT;
     try { c.letterSpacing = "18px"; } catch (e) {}
     c.fillText("积分里程碑", 354, 800);
-    try { c.letterSpacing = "0px"; } catch (e) {}
-
-    c.fillStyle = "rgba(255,255,255,0.75)";
-    c.font = "600 30px " + FONT;
-    try { c.letterSpacing = "8px"; } catch (e) {}
-    c.fillText("SUPERVISOR", 349, 1290);
     try { c.letterSpacing = "0px"; } catch (e) {}
 
     // 主区
@@ -1171,7 +1207,7 @@
     c.fillStyle = ACCENT;
     c.font = "600 34px " + FONT;
     try { c.letterSpacing = "12px"; } catch (e) {}
-    c.fillText("REWARD VOUCHER · 考公陪跑台", MX, 265);
+    c.fillText("REWARD VOUCHER", MX, 265);
     try { c.letterSpacing = "0px"; } catch (e) {}
 
     c.fillStyle = INK;
@@ -1204,12 +1240,43 @@
 
     c.fillText("考试结束后,将有一份神秘奖品等待着你哦。", MX, 830);
 
-    // 右上角撒一把小彩纸
-    sq(1740, 160, 16, "#eda100", 0);
-    sq(1800, 205, 12, "#1baf7a", 45);
-    sq(1860, 150, 15, ACCENT, 20);
-    sq(1912, 215, 11, "#e87ba4", 45);
-    sq(1935, 130, 10, "#4a3aa7", 0);
+    // 里程碑刻度尺:这张券在系列里的位置一目了然。
+    // 达成的实心,未来的空心,当前这张放大高亮——每领一张,图案前进一格
+    const RX = W - 150;
+    const TRACK_N = 8;
+    const tx0 = MX + 15;
+    const tGap = (RX - MX - 30) / (TRACK_N - 1);
+    c.strokeStyle = HAIR;
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(tx0, 975);
+    c.lineTo(tx0 + tGap * (TRACK_N - 1), 975);
+    c.stroke();
+    for (let i = 0; i < TRACK_N; i++) {
+      const m = MILESTONE_STEP * (i + 1);
+      const x = tx0 + i * tGap;
+      const cur = m === v.milestone;
+      const size = cur ? 27 : 18;
+      c.save();
+      c.translate(x, 975);
+      c.rotate(Math.PI / 4);
+      if (m <= v.milestone) {
+        c.fillStyle = ACCENT;
+        c.fillRect(-size / 2, -size / 2, size, size);
+      } else {
+        c.fillStyle = PAPER;
+        c.strokeStyle = AXIS;
+        c.lineWidth = 3;
+        c.fillRect(-size / 2, -size / 2, size, size);
+        c.strokeRect(-size / 2, -size / 2, size, size);
+      }
+      c.restore();
+      c.textAlign = "center";
+      c.fillStyle = cur ? ACCENT : MUTED;
+      c.font = (cur ? "600 30px " : "400 26px ") + FONT;
+      c.fillText(String(m), x, 1052);
+    }
+    c.textAlign = "left";
 
     // 底部:券号 + 签发
     c.fillStyle = HAIR;
@@ -1227,12 +1294,22 @@
     c.textAlign = "right";
     c.fillStyle = INK2;
     c.font = "400 40px " + FONT;
-    c.fillText("签发人 · 你的监督员", W - 150, 1250);
+    c.fillText("签发人 · 林林", 1740, 1250); // 右边留给印章
     c.textAlign = "left";
 
-    c.fillStyle = MUTED;
-    c.font = "400 34px " + FONT;
-    c.fillText("本券长期有效 · 全宇宙限量一张", MX, 1340);
+    // 印章「晓之以礼」:盖在落款上方、微微倾斜,没有素材就先不盖章。
+    // multiply 混合让白色笔画透出纸色、朱红像印泥吃进纸面,而不是贴图
+    if (sealImg.complete && sealImg.naturalWidth > 0) {
+      c.save();
+      c.translate(1878, 1200);
+      c.rotate(-8 * Math.PI / 180);
+      c.globalAlpha = 0.92;
+      c.globalCompositeOperation = "multiply";
+      const sw = 210;
+      const sh = sw * sealImg.naturalHeight / sealImg.naturalWidth;
+      c.drawImage(sealImg, -sw / 2, -sh / 2, sw, sh);
+      c.restore();
+    }
 
     // 最后打孔:撕票缺口 + 骑缝虚线(destination-out 打穿,透明底)
     c.globalCompositeOperation = "destination-out";
@@ -1247,48 +1324,6 @@
     }
     c.globalCompositeOperation = "source-over";
   }
-
-  // jsPDF 按需加载(350KB,平时不背这个包袱);CDN 不通就退回 PNG,券不能不让下
-  let jspdfLoading = null;
-  function loadJsPDF() {
-    if (window.jspdf) return Promise.resolve();
-    if (!jspdfLoading) {
-      jspdfLoading = new Promise(function (resolve, reject) {
-        const s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js";
-        s.onload = resolve;
-        s.onerror = function () { jspdfLoading = null; reject(new Error("jspdf 加载失败")); };
-        document.head.appendChild(s);
-      });
-    }
-    return jspdfLoading;
-  }
-
-  $("#voucher-pdf").addEventListener("click", async function () {
-    if (!chest.shown) return;
-    const canvas = $("#voucher-canvas");
-    const name = "兑奖券-" + chest.shown.serial;
-    try {
-      await loadJsPDF();
-      // PNG 会被 jsPDF 原样展开(十几 MB),白底压平转 JPEG 只有几百 KB;
-      // PDF 页面本来就是白的,打穿的撕票孔变白看不出差别
-      const flat = document.createElement("canvas");
-      flat.width = canvas.width;
-      flat.height = canvas.height;
-      const fc = flat.getContext("2d");
-      fc.fillStyle = "#ffffff";
-      fc.fillRect(0, 0, flat.width, flat.height);
-      fc.drawImage(canvas, 0, 0);
-      const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a5" });
-      pdf.addImage(flat.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 210, 148);
-      pdf.save(name + ".pdf");
-    } catch (e) {
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = name + ".png";
-      a.click();
-    }
-  });
 
   // ---------- 表单事件 ----------
 
