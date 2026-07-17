@@ -89,6 +89,14 @@ create table messages (
   created_at timestamptz not null default now()
 );
 
+-- 兑奖券:累计积分每满 1500 可开一次宝箱,记录领取(milestone 唯一防重复开箱)
+create table vouchers (
+  id         bigint generated always as identity primary key,
+  milestone  int  not null unique,   -- 1500 / 3000 / 4500 ...
+  serial     text not null,          -- 券号,含领取日期(北京时间)
+  claimed_at timestamptz not null default now()
+);
+
 -- 成就解锁记录(解锁即永久,数据变化不会收回)
 create table badge_unlocks (
   badge_id    text primary key,
@@ -117,6 +125,7 @@ alter table ledger     enable row level security;
 alter table drills        enable row level security;
 alter table mock_exams    enable row level security;
 alter table messages      enable row level security;
+alter table vouchers      enable row level security;
 alter table badge_unlocks enable row level security;
 
 create policy "anon all" on settings      for all using (true) with check (true);
@@ -127,4 +136,5 @@ create policy "anon all" on ledger        for all using (true) with check (true)
 create policy "anon all" on drills        for all using (true) with check (true);
 create policy "anon all" on mock_exams    for all using (true) with check (true);
 create policy "anon all" on messages      for all using (true) with check (true);
+create policy "anon all" on vouchers      for all using (true) with check (true);
 create policy "anon all" on badge_unlocks for all using (true) with check (true);

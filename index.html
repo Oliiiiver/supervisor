@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Supervisor · 考公陪跑台</title>
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
-<link rel="stylesheet" href="css/style.css?v=11">
+<link rel="stylesheet" href="css/style.css?v=12">
 </head>
 <body>
 
@@ -150,7 +150,7 @@
         <div class="stat-label">学习天数</div>
         <div class="stat-value"><span id="cum-days">0</span><span class="stat-unit">天</span></div>
       </div>
-      <div class="stat-tile">
+      <div class="stat-tile" id="cum-points-tile">
         <div class="stat-label">历史总积分</div>
         <div class="stat-value"><span id="cum-points">0</span><span class="stat-unit">分</span></div>
       </div>
@@ -265,6 +265,50 @@
 
 </main>
 
+<!-- 宝箱与兑奖券:累计积分每满 1500,点"历史总积分"弹出 -->
+<div class="chest-overlay" id="chest-overlay" hidden>
+  <div class="chest-modal">
+    <button type="button" class="task-del chest-close" id="chest-close" title="关闭">×</button>
+
+    <div class="chest-stage" id="chest-stage">
+      <div class="chest-wrap" id="chest-wrap">
+        <svg id="chest-svg" viewBox="0 0 140 124" width="190" role="img" aria-label="宝箱">
+          <g class="chest-rays" stroke="#eda100" stroke-width="4" stroke-linecap="round">
+            <line x1="70" y1="28" x2="70" y2="6"/>
+            <line x1="46" y1="32" x2="33" y2="13"/>
+            <line x1="94" y1="32" x2="107" y2="13"/>
+            <line x1="30" y1="46" x2="11" y2="36"/>
+            <line x1="110" y1="46" x2="129" y2="36"/>
+          </g>
+          <g class="chest-lid">
+            <path d="M30 56 v-12 a24 24 0 0 1 24-24 h32 a24 24 0 0 1 24 24 v12 z"
+                  fill="var(--accent)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+            <line x1="70" y1="20" x2="70" y2="56" stroke="var(--ink)" stroke-width="4"/>
+          </g>
+          <g class="chest-body">
+            <rect x="30" y="56" width="80" height="50" rx="6"
+                  fill="var(--surface)" stroke="var(--ink)" stroke-width="4"/>
+            <line x1="54" y1="58" x2="54" y2="104" stroke="var(--accent)" stroke-width="4"/>
+            <line x1="86" y1="58" x2="86" y2="104" stroke="var(--accent)" stroke-width="4"/>
+            <rect x="60" y="50" width="20" height="20" rx="4"
+                  fill="#eda100" stroke="var(--ink)" stroke-width="4"/>
+            <circle cx="70" cy="58" r="3" fill="var(--ink)"/>
+          </g>
+        </svg>
+      </div>
+      <div class="chest-hint" id="chest-hint">听说连点三下,它就会打开</div>
+    </div>
+
+    <div class="voucher-stage" id="voucher-stage" hidden>
+      <canvas id="voucher-canvas" width="2100" height="1480"></canvas>
+      <div class="voucher-actions">
+        <button type="button" id="voucher-pdf">下载 PDF 收藏</button>
+        <button type="button" class="btn-ghost" id="voucher-ok">收下啦</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <footer class="site-footer">
   <span id="mode-label">—</span>
   <button class="link-btn" id="reset-demo" hidden>清空本地数据</button>
@@ -272,13 +316,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=11"></script>
-<script src="js/demo-data.js?v=11"></script>
-<script src="js/store.js?v=11"></script>
-<script src="js/charts.js?v=11"></script>
-<script src="js/badges.js?v=11"></script>
-<script src="js/juice.js?v=11"></script>
-<script src="js/pomodoro.js?v=11"></script>
-<script src="js/app.js?v=11"></script>
+<script src="js/config.js?v=12"></script>
+<script src="js/demo-data.js?v=12"></script>
+<script src="js/store.js?v=12"></script>
+<script src="js/charts.js?v=12"></script>
+<script src="js/badges.js?v=12"></script>
+<script src="js/juice.js?v=12"></script>
+<script src="js/pomodoro.js?v=12"></script>
+<script src="js/app.js?v=12"></script>
 </body>
 </html>

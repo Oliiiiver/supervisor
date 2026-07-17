@@ -342,6 +342,26 @@ window.Store = (function () {
       await sb(db.from("messages").delete().eq("id", id));
     },
 
+    // ---------- 兑奖券(累计积分里程碑,开宝箱领取) ----------
+
+    async listVouchers() {
+      if (mode === "local") return (cache.vouchers || []).slice();
+      return sb(db.from("vouchers").select("*").order("milestone"));
+    },
+
+    async addVoucher(v) {
+      if (mode === "local") {
+        cache.vouchers = cache.vouchers || [];
+        cache.seq.voucher = cache.seq.voucher || 1;
+        cache.vouchers.push({
+          id: nextId("voucher"), milestone: v.milestone, serial: v.serial,
+          claimed_at: new Date().toISOString(),
+        });
+        return save();
+      }
+      await sb(db.from("vouchers").insert(v));
+    },
+
     // ---------- 成就解锁(解锁即永久) ----------
 
     async listBadgeUnlocks() {

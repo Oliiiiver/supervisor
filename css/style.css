@@ -1017,6 +1017,104 @@ button:disabled {
 
 .link-btn:hover { background: none; color: var(--ink); }
 
+/* ---------- 宝箱与兑奖券 ---------- */
+
+#cum-points-tile.tile-clickable { cursor: pointer; }
+
+/* 里程碑达成:数字开始"呼吸",引她来点 */
+#cum-points-tile.milestone-ready { border-color: var(--accent); }
+#cum-points-tile.milestone-ready .stat-value {
+  color: var(--accent);
+  animation: milestone-breathe 1.6s ease-in-out infinite;
+  transform-origin: left center;
+}
+
+@keyframes milestone-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+.chest-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(11, 11, 11, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.chest-modal {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  padding: 40px 36px 28px;
+  max-width: 720px;
+  width: 100%;
+  text-align: center;
+}
+
+.chest-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+}
+
+.chest-wrap {
+  display: inline-block;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chest-wrap.shake { animation: chest-shake 0.4s; }
+
+@keyframes chest-shake {
+  0%, 100% { transform: rotate(0); }
+  20%      { transform: rotate(-8deg); }
+  45%      { transform: rotate(7deg); }
+  70%      { transform: rotate(-5deg); }
+  90%      { transform: rotate(3deg); }
+}
+
+#chest-svg .chest-lid {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  transition: transform 0.5s cubic-bezier(.2, 1.4, .4, 1);
+}
+#chest-svg.open .chest-lid { transform: rotate(-38deg) translate(-4px, -4px); }
+
+#chest-svg .chest-rays { opacity: 0; transition: opacity 0.4s 0.15s; }
+#chest-svg.open .chest-rays { opacity: 1; }
+
+.chest-hint {
+  margin-top: 12px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+/* 券面是透明底 PNG(缺口打穿),投影让它像真的躺在桌上 */
+#voucher-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.28));
+}
+
+.voucher-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--axis);
+}
+
 /* ---------- 响应式 ---------- */
 
 @media (max-width: 720px) {
