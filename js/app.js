@@ -774,10 +774,13 @@
     // 只展示已解锁的;未解锁的合并成一张"隐藏成就"卡
     const bgrid = $("#badge-grid");
     bgrid.innerHTML = "";
+    // 纸墨主题用「金石版画」重绘图标,简白仍用原版
+    const inkIcons = document.documentElement.classList.contains("theme-ink")
+      ? (window.BadgeInkIcons || {}) : {};
     for (const b of unlocked) {
       const el = document.createElement("div");
       el.className = "badge unlocked";
-      el.innerHTML = '<div class="badge-icon">' + b.icon + '</div>'
+      el.innerHTML = '<div class="badge-icon">' + (inkIcons[b.id] || b.icon) + '</div>'
         + '<div class="badge-name">' + b.name + '</div>'
         + '<div class="badge-desc">' + b.desc + '</div>';
       el.title = "已解锁";
@@ -1114,9 +1117,26 @@
   function drawVoucher(canvas, v) {
     const c = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height;
-    const PAPER = "#faf8f2", INK = "#0b0b0b", INK2 = "#52514e", MUTED = "#898781",
-          ACCENT = "#2a78d6", ACCENT_DEEP = "#1c5cab", HAIR = "#e1e0d9", AXIS = "#c3c2b7";
-    const FONT = '"Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif';
+    // 券面随当前主题换装:简白 = 蓝票根 + 黑体,纸墨 = 朱砂票根 + 衬线
+    const inkStyle = document.documentElement.classList.contains("theme-ink");
+    const PAPER = inkStyle ? "#faf5e9" : "#faf8f2",
+          INK   = inkStyle ? "#2a2620" : "#0b0b0b",
+          INK2  = inkStyle ? "#5f584a" : "#52514e",
+          MUTED = inkStyle ? "#998e77" : "#898781",
+          ACCENT = inkStyle ? "#b03a24" : "#2a78d6",
+          ACCENT_DEEP = inkStyle ? "#8e2b18" : "#1c5cab",
+          HAIR  = inkStyle ? "#ddd1b8" : "#e1e0d9",
+          AXIS  = inkStyle ? "#c9bb9c" : "#c3c2b7",
+          STUB_TEXT = inkStyle ? "#faf5e9" : "#ffffff",
+          DOT = inkStyle ? "rgba(42,38,32,0.03)" : "rgba(11,11,11,0.03)",
+          WATERMARK = inkStyle ? "rgba(176,58,36,0.10)" : "rgba(42,120,214,0.10)",
+          TRIO2 = inkStyle ? "#3f5c55" : "#1baf7a",
+          TRIO3 = inkStyle ? "#a97b1f" : "#eda100";
+    // 票根上的米白/纯白带透明度
+    const stubA = a => inkStyle ? "rgba(250,245,233," + a + ")" : "rgba(255,255,255," + a + ")";
+    const FONT = inkStyle
+      ? '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STZhongsong", "SimSun", serif'
+      : '"Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif';
     const SX = 640;   // 票根分割线
     const MX = 780;   // 主区左边距
 
@@ -1153,11 +1173,11 @@
     c.save();
     rr(50, 50, W - 100, H - 100, 40);
     c.clip();
-    c.fillStyle = "rgba(11,11,11,0.03)";
+    c.fillStyle = DOT;
     for (let gy = 130; gy < H - 90; gy += 56) {
       for (let gx = SX + 90; gx < W - 90; gx += 56) c.fillRect(gx, gy, 4, 4);
     }
-    c.strokeStyle = "rgba(42,120,214,0.10)";
+    c.strokeStyle = WATERMARK;
     c.lineWidth = 3;
     for (const s of [430, 300]) {
       c.save();
@@ -1174,19 +1194,19 @@
     c.strokeStyle = INK;
     c.stroke(); // 色块压过的边框描回来
 
-    // 票根内容(白字):内框、上下对称菱形饰件、套印错位的大数字
+    // 票根内容(简白纯白/纸墨米白):内框、上下对称菱形饰件、套印错位的大数字
     c.textAlign = "center";
-    c.strokeStyle = "rgba(255,255,255,0.55)";
+    c.strokeStyle = stubA(0.55);
     c.lineWidth = 3;
     rr(100, 100, SX - 150, H - 200, 24);
     c.stroke();
 
-    sq(345, 215, 20, "rgba(255,255,255,0.9)", 45);
-    sq(385, 215, 14, "rgba(255,255,255,0.6)", 45);
-    sq(305, 215, 14, "rgba(255,255,255,0.6)", 45);
-    sq(345, H - 215, 20, "rgba(255,255,255,0.9)", 45);
-    sq(385, H - 215, 14, "rgba(255,255,255,0.6)", 45);
-    sq(305, H - 215, 14, "rgba(255,255,255,0.6)", 45);
+    sq(345, 215, 20, stubA(0.9), 45);
+    sq(385, 215, 14, stubA(0.6), 45);
+    sq(305, 215, 14, stubA(0.6), 45);
+    sq(345, H - 215, 20, stubA(0.9), 45);
+    sq(385, H - 215, 14, stubA(0.6), 45);
+    sq(305, H - 215, 14, stubA(0.6), 45);
 
     let fs = 210; // 数字大小自适应,别撑破票根
     c.font = "700 " + fs + "px " + FONT;
@@ -1195,8 +1215,8 @@
       c.font = "700 " + fs + "px " + FONT;
     }
     c.fillStyle = ACCENT_DEEP;
-    c.fillText(String(v.milestone), 352, 707); // 深蓝错位衬底,套印质感
-    c.fillStyle = "#ffffff";
+    c.fillText(String(v.milestone), 352, 707); // 深色错位衬底,套印质感
+    c.fillStyle = STUB_TEXT;
     c.fillText(String(v.milestone), 345, 700);
     c.font = "400 44px " + FONT;
     try { c.letterSpacing = "18px"; } catch (e) {}
@@ -1217,10 +1237,10 @@
     c.fillText("兑奖券", MX - 8, 460);
     try { c.letterSpacing = "0px"; } catch (e) {}
 
-    // 标题旁的几何点缀
+    // 标题旁的几何点缀:简白蓝绿金,纸墨朱砂/黛青/鎏金
     sq(1500, 415, 30, ACCENT, 0);
-    sq(1550, 415, 22, "#1baf7a", 45);
-    sq(1594, 415, 16, "#eda100", 0);
+    sq(1550, 415, 22, TRIO2, 45);
+    sq(1594, 415, 16, TRIO3, 0);
 
     c.fillStyle = HAIR;
     c.fillRect(MX, 530, W - 150 - MX, 3);
@@ -1441,6 +1461,22 @@
 
   // 深浅色切换时重绘图表
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", refresh);
+
+  // ---------- 风格切换:简白 ⇄ 纸墨,按钮上写对面的名字 ----------
+
+  function applyTheme(ink) {
+    document.documentElement.classList.toggle("theme-ink", ink);
+    $("#theme-toggle").textContent = ink ? "简白" : "纸墨";
+  }
+
+  $("#theme-toggle").addEventListener("click", function () {
+    const ink = !document.documentElement.classList.contains("theme-ink");
+    try { localStorage.setItem("supervisor-theme", ink ? "ink" : "plain"); } catch (e) {}
+    applyTheme(ink);
+    refresh(); // 图表取色跟着主题走
+  });
+
+  applyTheme(document.documentElement.classList.contains("theme-ink"));
 
   // ---------- 启动 ----------
 

@@ -1,0 +1,266 @@
+/* Supervisor · 考公陪跑台 — 「纸墨」主题
+   宣纸 / 墨色 / 朱砂 / 黛青,与成就系统的书法意象同源。
+   规则全部挂在 html.theme-ink 下,是覆盖在简白风上的一层皮:
+   不改任何结构,不放印章图片——那枚印只属于兑奖券。
+   她 = 朱砂,督 = 黛青,双色贯穿任务双列 / 热力图 / 留言板。 */
+
+html.theme-ink {
+  --page:       #f4eee0;
+  --surface:    #faf5e9;
+  --ink:        #2a2620;
+  --ink-2:      #5f584a;
+  --ink-muted:  #998e77;
+  --hairline:   #ddd1b8;
+  --axis:       #c9bb9c;
+  --accent:     #b03a24;
+  --accent-soft:#dda184;
+  --neutral:    #ece3cf;
+  /* 纸上从中式惯例:红涨、青跌 */
+  --good:       #b03a24;
+  --alert:      #8e2b18;
+  --qing:       #3f5c55;
+  --qing-soft:  rgba(63, 92, 85, 0.08);
+  --red-soft:   rgba(176, 58, 36, 0.07);
+  /* 热力图默认走她的朱砂序列(图例同) */
+  --hm-0: #ece3cf;
+  --hm-1: #efd9c2;
+  --hm-2: #dda184;
+  --hm-3: #c65f3f;
+  --hm-4: #9c3319;
+}
+
+/* 督的热力图换黛青序列:格子从容器继承变量即可 */
+html.theme-ink #heatmap-sup {
+  --hm-1: #dde2d6;
+  --hm-2: #a9bcae;
+  --hm-3: #6f9184;
+  --hm-4: #3f5c55;
+}
+
+html.theme-ink body {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Source Han Serif CN",
+               "Songti SC", "STZhongsong", "SimSun", serif;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+
+/* 纸纹:一层极淡的噪点铺满全站,别的都安静 */
+html.theme-ink body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  pointer-events: none;
+  opacity: 0.55;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.38 0 0 0 0 0.30 0 0 0 0.045 0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+}
+
+html.theme-ink ::selection { background: rgba(176, 58, 36, 0.18); }
+
+/* ---------- 头部:发丝线上一节朱砂,像卷轴的轴头 ---------- */
+
+html.theme-ink .site-header {
+  position: relative;
+  border-bottom-color: var(--axis);
+}
+
+html.theme-ink .site-header::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  bottom: -1px;
+  width: 148px;
+  height: 3px;
+  background: var(--accent);
+}
+
+html.theme-ink .brand {
+  font-size: 17px;
+  letter-spacing: 0.22em;
+}
+
+html.theme-ink .brand-sub { letter-spacing: 0.3em; }
+
+html.theme-ink .tab { letter-spacing: 0.1em; }
+
+html.theme-ink .tab.active { font-weight: 700; }
+
+/* ---------- 卡片与标题:标题前一粒朱砂 ---------- */
+
+html.theme-ink .card,
+html.theme-ink .stat-tile {
+  box-shadow: 0 1px 2px rgba(66, 52, 28, 0.05), 0 12px 32px -20px rgba(66, 52, 28, 0.28);
+}
+
+html.theme-ink h2 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: none;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+html.theme-ink h2::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--red-soft);
+  flex: none;
+}
+
+html.theme-ink .h2-note { margin-left: 0; }
+
+html.theme-ink .stat-label { letter-spacing: 0.22em; }
+
+html.theme-ink .stat-value { font-weight: 900; }
+
+/* ---------- 任务双列:她朱砂在左,督黛青在右 ---------- */
+
+html.theme-ink .task-col h3 {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  border-bottom: 1px solid var(--hairline);
+}
+
+html.theme-ink .task-columns .task-col:first-child h3 {
+  border-bottom: 2px solid var(--accent);
+}
+
+html.theme-ink .task-columns .task-col:last-child h3 {
+  border-bottom: 2px solid var(--qing);
+}
+
+html.theme-ink .task-item { border-bottom-style: dashed; }
+html.theme-ink .task-item:last-child { border-bottom: none; }
+
+/* 目标横幅:一纸手书 */
+html.theme-ink .goal-banner {
+  background: var(--red-soft);
+  border-left-color: var(--accent);
+}
+
+html.theme-ink .task-columns .task-col:last-child .goal-banner {
+  background: var(--qing-soft);
+  border-left-color: var(--qing);
+}
+
+/* 手写感的文字用楷体:目标、留言、空状态提示 */
+html.theme-ink .goal-text,
+html.theme-ink .msg-text,
+html.theme-ink .empty-hint,
+html.theme-ink textarea {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "TW-Kai", "Noto Serif SC", serif;
+}
+
+html.theme-ink .goal-text,
+html.theme-ink .msg-text { font-size: 15.5px; }
+
+/* ---------- 表单与按钮 ---------- */
+
+/* hover 变红交给基础样式的 --accent 重映射,这里只补焦点光环 */
+html.theme-ink input:focus,
+html.theme-ink select:focus,
+html.theme-ink textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--red-soft);
+}
+
+/* ---------- 幸运签:纸上用金 ---------- */
+
+html.theme-ink .luck-chip {
+  color: #a97b1f;
+  border-color: #a97b1f;
+}
+
+html.theme-ink .luck-chip.luck-ten {
+  background: #a97b1f;
+  border-color: #a97b1f;
+  color: var(--surface);
+}
+
+/* ---------- 表格 ---------- */
+
+html.theme-ink .data-table tbody tr { transition: background 0.15s; }
+html.theme-ink .data-table tbody tr:hover { background: var(--red-soft); }
+html.theme-ink .data-table .delta-neg { color: var(--qing); }
+html.theme-ink .drill-stat-delta.delta-neg { color: var(--qing); }
+
+/* ---------- 留言板:左边线记作者,她朱督青 ---------- */
+
+html.theme-ink .msg-item {
+  border-top: none;
+  border-bottom: 1px dashed var(--hairline);
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  margin-bottom: 2px;
+}
+
+html.theme-ink .msg-item:has(.kind-tag) { border-left-color: var(--qing); }
+
+html.theme-ink .reply-hint,
+html.theme-ink .msg-quote {
+  background: var(--qing-soft);
+  border-left-color: var(--qing);
+}
+
+/* ---------- 成就墙:金石版画奖章 ----------
+   卡片保持安静,状态全在奖章上:未解锁墨圈,解锁朱圈红晕 */
+
+html.theme-ink .badge {
+  border: 1px solid var(--hairline);
+  background: var(--page);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+html.theme-ink .badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 1px 2px rgba(66, 52, 28, 0.05), 0 12px 32px -20px rgba(66, 52, 28, 0.28);
+}
+
+html.theme-ink .badge.unlocked {
+  border-color: var(--hairline);
+  background: var(--page);
+}
+
+html.theme-ink .badge-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  border: 1.5px solid var(--axis);
+  background: var(--surface);
+  color: var(--ink-muted);
+  margin: 0 auto 8px;
+}
+
+html.theme-ink .badge-icon svg { width: 34px; height: 34px; }
+
+html.theme-ink .badge.unlocked .badge-icon {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: var(--red-soft);
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 4.5px rgba(176, 58, 36, 0.25);
+}
+
+html.theme-ink .badge-q {
+  font-size: 20px;
+  border: 2px dashed var(--ink-muted);
+  background: var(--surface);
+}
+
+html.theme-ink .badge-name { letter-spacing: 0.1em; }
+
+/* ---------- 页脚 ---------- */
+
+html.theme-ink .site-footer {
+  border-top: 1px solid var(--hairline);
+  padding-top: 16px;
+  letter-spacing: 0.08em;
+}

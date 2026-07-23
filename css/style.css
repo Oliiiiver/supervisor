@@ -134,6 +134,25 @@ body {
   padding: 2px 8px;
 }
 
+/* ---------- 风格切换 ---------- */
+
+/* 按钮上写的是要换去的那个风格的名字 */
+.theme-toggle {
+  background: none;
+  color: var(--ink-2);
+  border: 1px solid var(--hairline);
+  padding: 3px 12px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  background: none;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ---------- 番茄钟徽章 ---------- */
 
 .pomo-chip {

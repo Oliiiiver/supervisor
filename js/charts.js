@@ -18,11 +18,18 @@ window.Charts = (function () {
   const SERIES_LIGHT = ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e87ba4", "#e34948"];
   const SERIES_DARK  = ["#3987e5", "#199e70", "#c98500", "#008300", "#9085e9", "#d55181", "#e66767"];
 
+  // 纸墨主题永远是浅色纸面,系统深色模式不作数
+  function isInk() {
+    return document.documentElement.classList.contains("theme-ink");
+  }
+
   function isDark() {
-    return matchMedia("(prefers-color-scheme: dark)").matches;
+    return !isInk() && matchMedia("(prefers-color-scheme: dark)").matches;
   }
 
   function ink() {
+    if (isInk())
+      return { secondary: "#5f584a", muted: "#998e77", grid: "#ddd1b8", axis: "#c9bb9c" };
     return isDark()
       ? { secondary: "#c3c2b7", muted: "#898781", grid: "#2c2c2a", axis: "#383835" }
       : { secondary: "#52514e", muted: "#898781", grid: "#e1e0d9", axis: "#c3c2b7" };

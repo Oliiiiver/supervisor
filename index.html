@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Supervisor · 考公陪跑台</title>
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
-<link rel="stylesheet" href="css/style.css?v=15">
+<script>/* 进页面先把上次选的风格穿上,避免闪一下白 */
+try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement.classList.add("theme-ink")}catch(e){}</script>
+<link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/theme-ink.css?v=16">
 </head>
 <body>
 
@@ -18,6 +21,7 @@
     <button class="tab" data-tab="board">留言板<span class="tab-dot" id="board-dot" hidden></span></button>
   </nav>
   <div class="header-right">
+    <button class="theme-toggle" id="theme-toggle" title="换个界面风格,两边数据一样">纸墨</button>
     <button class="pomo-chip" id="pomo-chip" title="番茄钟:45 分钟专注 + 10 分钟活动,点击开始/停止">专注 45:00</button>
     <span class="badge" id="demo-badge" hidden>本地数据</span>
     <label class="sup-toggle"><input type="checkbox" id="supervisor-toggle"><span>监督员模式</span></label>
@@ -315,13 +319,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/demo-data.js?v=15"></script>
-<script src="js/store.js?v=15"></script>
-<script src="js/charts.js?v=15"></script>
-<script src="js/badges.js?v=15"></script>
-<script src="js/juice.js?v=15"></script>
-<script src="js/pomodoro.js?v=15"></script>
-<script src="js/app.js?v=15"></script>
+<script src="js/config.js?v=16"></script>
+<script src="js/demo-data.js?v=16"></script>
+<script src="js/store.js?v=16"></script>
+<script src="js/charts.js?v=16"></script>
+<script src="js/badges.js?v=16"></script>
+<script src="js/badges-ink.js?v=16"></script>
+<script src="js/juice.js?v=16"></script>
+<script src="js/pomodoro.js?v=16"></script>
+<script src="js/app.js?v=16"></script>
 </body>
 </html>
