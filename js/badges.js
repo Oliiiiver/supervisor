@@ -235,30 +235,30 @@ window.Badges = (function () {
     {
       id: "exam-5",
       name: "斩将先登",
-      desc: "累计完成 5 套模考",
+      desc: "累计完成 3 套模考",
       icon: icon('<path d="M16 3v17M11 8l5-5 5 5"/><path d="M10 20h12M16 20v9M13 29h6"/>'),
-      test: ctx => ctx.examCount >= 5,
+      test: ctx => ctx.examCount >= 3,
     },
     {
       id: "exam-10",
       name: "勇冠三军",
-      desc: "累计完成 10 套模考",
+      desc: "累计完成 6 套模考",
       icon: icon('<path d="M8 18a8 8 0 0 1 16 0v6H8z"/><path d="M16 10V4M16 24v4"/>'),
-      test: ctx => ctx.examCount >= 10,
+      test: ctx => ctx.examCount >= 6,
     },
     {
       id: "exam-15",
       name: "威震华夏",
-      desc: "累计完成 15 套模考",
+      desc: "累计完成 9 套模考",
       icon: icon('<ellipse cx="16" cy="10" rx="10" ry="4"/><path d="M6 10v12c0 2 4 4 10 4s10-2 10-4V10"/>'),
-      test: ctx => ctx.examCount >= 15,
+      test: ctx => ctx.examCount >= 9,
     },
     {
       id: "exam-20",
       name: "封狼居胥",
-      desc: "累计完成 20 套模考",
+      desc: "累计完成 12 套模考",
       icon: icon('<path d="M9 4v24"/><path d="M9 5h16l-4 5 4 5H9"/>'),
-      test: ctx => ctx.examCount >= 20,
+      test: ctx => ctx.examCount >= 12,
     },
 
     // ---------- 里程碑 ----------
