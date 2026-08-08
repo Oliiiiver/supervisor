@@ -999,9 +999,6 @@
   // 开出一张兑奖券(考后兑神秘奖品)。领取记录落库,两台设备不会重复开箱。
 
   const MILESTONE_STEP = 1500;
-  // 这一档的奖品要按尺寸定做:箱子开了先出一张登记表,填完才给券。
-  // 没填就关掉 = 这一档还没领,磁贴继续呼吸,下次点开还是这张表。
-  const SIZE_MILESTONE = 4500;
   const chest = { pending: [], milestone: 0, clicks: 0, shown: null };
 
   // 票根小图标:两侧撕票缺口 + 骑缝虚线
@@ -1055,7 +1052,6 @@
     $("#chest-svg").classList.remove("open");
     $("#chest-wrap").classList.remove("shake-1", "shake-2");
     $("#chest-stage").hidden = false;
-    $("#size-stage").hidden = true;
     $("#voucher-stage").hidden = true;
     $("#chest-overlay").hidden = false;
   }
@@ -1064,67 +1060,9 @@
     chest.shown = v;
     drawVoucher($("#voucher-canvas"), v);
     $("#chest-stage").hidden = true;
-    $("#size-stage").hidden = true;
     $("#voucher-stage").hidden = false;
     $("#chest-overlay").hidden = false;
   }
-
-  function showSizeForm() {
-    const err = $("#size-err");
-    err.textContent = "号数和指围,至少给一个吧。";
-    err.hidden = true;
-    $("#chest-stage").hidden = true;
-    $("#voucher-stage").hidden = true;
-    $("#size-stage").hidden = false;
-  }
-
-  // 券号按北京日期,和宝箱那边一个规矩
-  function makeSerial(m) {
-    return todayHer().replace(/-/g, "") + "-" + m;
-  }
-
-  async function grantVoucher(m) {
-    const serial = makeSerial(m);
-    try {
-      await Store.addVoucher({ milestone: m, serial: serial });
-    } catch (e) {
-      // 另一台设备刚开过同一档,静默收场,刷新后看券即可
-      closeChest();
-      refresh();
-      return;
-    }
-    showVoucher({ milestone: m, serial: serial });
-    refresh(); // 后台更新呼吸状态和票根(也许还压着下一档)
-  }
-
-  $("#size-ok").addEventListener("click", async function () {
-    const ring = $("#size-ring").value.trim();
-    const mmRaw = $("#size-mm").value.trim();
-    if (!ring && !mmRaw) {
-      $("#size-err").hidden = false;
-      $("#size-help").open = true; // 不知道号数就把量法摊开给她看
-      return;
-    }
-    const btn = this;
-    btn.disabled = true;
-    const ok = await Store.addSizeEntry({
-      milestone: chest.milestone,
-      hand: $("#size-hand").value,
-      finger: $("#size-finger").value,
-      ring_size: ring,
-      mm: mmRaw ? Number(mmRaw) : null,
-      note: $("#size-note").value.trim(),
-    });
-    btn.disabled = false;
-    if (!ok) {
-      // 没存住就别发券:这一档留着,她回头再点开还是这张表,登记不会丢
-      const err = $("#size-err");
-      err.textContent = "没存上,过一会儿再试试。";
-      err.hidden = false;
-      return;
-    }
-    await grantVoucher(chest.milestone);
-  });
 
   // 印章素材:图片晚于券面加载完时补画一次
   const sealImg = new Image();
@@ -1149,16 +1087,9 @@
     wrap.classList.add(chest.clicks === 1 ? "shake-1" : "shake-2");
     if (chest.clicks < 3) return;
 
-    // 第三下:箱子开。要登记尺寸的那一档,里面浮出来的是登记表不是券,
-    // 券等她填完再发;别的档还是老规矩,先落库再亮券。
+    // 第三下:先落库再开箱(撞上另一台设备刚开过就静默收场,刷新后看券即可)
     const m = chest.milestone;
-    if (m === SIZE_MILESTONE) {
-      svg.classList.add("open");
-      Juice.bigBurst();
-      setTimeout(showSizeForm, 700);
-      return;
-    }
-    const serial = makeSerial(m);
+    const serial = todayHer().replace(/-/g, "") + "-" + m;
     try {
       await Store.addVoucher({ milestone: m, serial: serial });
     } catch (e) {

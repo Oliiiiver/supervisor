@@ -97,18 +97,6 @@ create table vouchers (
   claimed_at timestamptz not null default now()
 );
 
--- 领奖登记:第三张券(4500)得先登记尺寸才发,奖品要按尺寸定做
-create table size_registry (
-  id         bigint generated always as identity primary key,
-  milestone  int  not null unique,
-  hand       text not null default '',
-  finger     text not null default '',
-  ring_size  text not null default '',
-  mm         numeric,
-  note       text not null default '',
-  created_at timestamptz not null default now()
-);
-
 -- 成就解锁记录(解锁即永久,数据变化不会收回)
 create table badge_unlocks (
   badge_id    text primary key,
@@ -138,7 +126,6 @@ alter table drills        enable row level security;
 alter table mock_exams    enable row level security;
 alter table messages      enable row level security;
 alter table vouchers      enable row level security;
-alter table size_registry enable row level security;
 alter table badge_unlocks enable row level security;
 
 create policy "anon all" on settings      for all using (true) with check (true);
@@ -150,5 +137,4 @@ create policy "anon all" on drills        for all using (true) with check (true)
 create policy "anon all" on mock_exams    for all using (true) with check (true);
 create policy "anon all" on messages      for all using (true) with check (true);
 create policy "anon all" on vouchers      for all using (true) with check (true);
-create policy "anon all" on size_registry for all using (true) with check (true);
 create policy "anon all" on badge_unlocks for all using (true) with check (true);
