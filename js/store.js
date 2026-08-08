@@ -362,6 +362,26 @@ window.Store = (function () {
       await sb(db.from("vouchers").insert(v));
     },
 
+    // ---------- 领奖登记 ----------
+    // 有的奖品要按尺寸定做,对应那一档的券得先登记才发。只写不读:
+    // 站上没有任何地方展示它,登记完的内容只在 Supabase 后台看得到。
+
+    // 返回 true = 存住了(或这一档本来就登记过)。不弹 alert:她这会儿正
+    // 拆宝箱,不该看见一句报错;存不住就让调用方留着券不发,回头再来一次。
+    async addSizeEntry(e) {
+      if (mode === "local") {
+        cache.sizes = cache.sizes || [];
+        cache.seq.size = cache.seq.size || 1;
+        cache.sizes.push(Object.assign({ id: nextId("size"), created_at: new Date().toISOString() }, e));
+        save();
+        return true;
+      }
+      const { error } = await db.from("size_registry").insert(e);
+      if (!error) return true;
+      console.error(error);
+      return error.code === "23505"; // 唯一约束:这一档已经登记过,当成功办
+    },
+
     // ---------- 成就解锁(解锁即永久) ----------
 
     async listBadgeUnlocks() {

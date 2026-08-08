@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -7,8 +7,8 @@
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
 <script>/* 进页面先把上次选的风格穿上,避免闪一下白 */
 try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement.classList.add("theme-ink")}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=16">
-<link rel="stylesheet" href="css/theme-ink.css?v=16">
+<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="stylesheet" href="css/theme-ink.css?v=17">
 </head>
 <body>
 
@@ -303,6 +303,60 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
       </div>
     </div>
 
+    <!-- 领奖登记:某些档的奖品要按尺寸定做,填完才发券 -->
+    <div class="size-stage" id="size-stage" hidden>
+      <div class="size-head">
+        <div class="size-title">领奖登记</div>
+        <p class="size-sub">这一档的奖品要按尺寸定做。<br>登记完就能收下这张券。</p>
+      </div>
+
+      <div class="size-row">
+        <label for="size-hand">戴哪只手</label>
+        <select id="size-hand">
+          <option value="左手">左手</option>
+          <option value="右手">右手</option>
+        </select>
+        <label for="size-finger">哪根手指</label>
+        <select id="size-finger">
+          <option value="拇指">拇指</option>
+          <option value="食指">食指</option>
+          <option value="中指">中指</option>
+          <option value="无名指">无名指</option>
+          <option value="小指">小指</option>
+        </select>
+      </div>
+
+      <div class="size-row">
+        <label for="size-ring">戒指几号</label>
+        <input type="text" id="size-ring" placeholder="知道就直接填,比如 12">
+      </div>
+
+      <details class="size-help" id="size-help">
+        <summary>不知道几号?量一下,一分钟的事</summary>
+        <ol>
+          <li>剪一条细纸带(别用会伸缩的皮筋)。</li>
+          <li>绕要戴的那根手指一圈,松紧到能刚好推过指节。</li>
+          <li>在接口处画一道线,展开用尺量到那道线,单位毫米。</li>
+        </ol>
+        <div class="size-row">
+          <label for="size-mm">量出来是</label>
+          <input type="number" id="size-mm" min="30" max="90" step="0.5" placeholder="毫米">
+          <span class="size-unit">mm</span>
+        </div>
+      </details>
+
+      <div class="size-row size-row-note">
+        <label for="size-note">还想说点什么</label>
+        <input type="text" id="size-note" placeholder="可不填">
+      </div>
+
+      <p class="size-err" id="size-err" hidden>号数和指围,至少给一个吧。</p>
+
+      <div class="voucher-actions">
+        <button type="button" id="size-ok">登记好了,收下这张券</button>
+      </div>
+    </div>
+
     <div class="voucher-stage" id="voucher-stage" hidden>
       <canvas id="voucher-canvas" width="2100" height="1480"></canvas>
       <div class="voucher-actions">
@@ -319,14 +373,14 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=16"></script>
-<script src="js/demo-data.js?v=16"></script>
-<script src="js/store.js?v=16"></script>
-<script src="js/charts.js?v=16"></script>
-<script src="js/badges.js?v=16"></script>
-<script src="js/badges-ink.js?v=16"></script>
-<script src="js/juice.js?v=16"></script>
-<script src="js/pomodoro.js?v=16"></script>
-<script src="js/app.js?v=16"></script>
+<script src="js/config.js?v=17"></script>
+<script src="js/demo-data.js?v=17"></script>
+<script src="js/store.js?v=17"></script>
+<script src="js/charts.js?v=17"></script>
+<script src="js/badges.js?v=17"></script>
+<script src="js/badges-ink.js?v=17"></script>
+<script src="js/juice.js?v=17"></script>
+<script src="js/pomodoro.js?v=17"></script>
+<script src="js/app.js?v=17"></script>
 </body>
 </html>

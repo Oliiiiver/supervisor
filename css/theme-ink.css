@@ -171,6 +171,16 @@ html.theme-ink textarea:focus {
   box-shadow: 0 0 0 3px var(--red-soft);
 }
 
+/* 领奖登记表:纸墨里这就是一张手写的单子 */
+html.theme-ink .size-title {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "TW-Kai", "Noto Serif SC", serif;
+  font-size: 24px;
+}
+
+html.theme-ink .size-sub { font-size: 13.5px; }
+
+html.theme-ink .size-help { border-style: dashed; }
+
 /* ---------- 幸运签:纸上用金 ---------- */
 
 html.theme-ink .luck-chip {
