@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>成就徽章 · 校样</title>
+<style>
+  body {
+    margin: 0; padding: 26px 30px;
+    background: #f4eee0; color: #2a2620;
+    font-family: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  }
+  h1 { font-size: 17px; letter-spacing: .18em; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 12.5px; color: #998e77; margin: 0 0 20px; }
+  .band { display: flex; align-items: baseline; gap: 10px; margin: 20px 0 8px; }
+  .band b { font-size: 14px; letter-spacing: .12em; }
+  .band span { font-size: 11.5px; color: #998e77; }
+  .band::after { content: ""; flex: 1; height: 1px; background: #ddd1b8; }
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .cell {
+    background: #faf5e9; border: 1px solid #ddd1b8;
+    padding: 10px 6px 8px; text-align: center;
+  }
+  .cell.new { border-color: #b03a24; box-shadow: 0 0 0 1px #b03a24 inset; }
+  .pair { display: flex; justify-content: center; gap: 6px; }
+  .pair > div { width: 62px; height: 62px; color: #2a2620; }
+  .pair svg { width: 100%; height: 100%; display: block; }
+  .pair .plain { background: #fff; }
+  .nm { font-size: 12.5px; margin-top: 6px; letter-spacing: .08em; }
+  .ds { font-size: 11px; color: #998e77; margin-top: 2px; line-height: 1.4; }
+  .id { font-size: 10px; color: #c0b49a; margin-top: 3px; font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<h1>成就徽章 · 校样</h1>
+<p class="sub">左格简白版(js/badges.js),右格纸墨金石版(js/badges-ink.js)。朱框为本次新增/改动。</p>
+<div id="out"></div>
+
+<script src="js/badges.js"></script>
+<script src="js/badges-ink.js"></script>
+<script>
+(function () {
+  // 分组只用于校样排版,与主站无关
+  const BANDS = [
+    ["书法系列 · 每日全清", id => id.startsWith("first-task") || id.startsWith("first-allclear") || id.startsWith("allclear")],
+    ["奖励系列", id => ["first-redeem","big-spender","lucky-star","mugua","mutao","muli","work-rest","self-love"].includes(id)],
+    ["模块精通 · 单组正确率 90%", id => id.startsWith("mod-")],
+    ["文官系列 · 累计题量", id => id.startsWith("drill-")],
+    ["武官系列 · 模考", id => id.startsWith("exam-")],
+    ["里程碑与隐藏", () => true],
+  ];
+  const NEW = ["drill-180","drill-210","drill-240","drill-300"];
+  const ink = window.BadgeInkIcons || {};
+  const rest = window.Badges.LIST.slice();
+  const out = document.getElementById("out");
+
+  for (const [title, match] of BANDS) {
+    const mine = [];
+    for (let i = rest.length - 1; i >= 0; i--) {
+      if (match(rest[i].id)) mine.unshift(rest.splice(i, 1)[0]);
+    }
+    if (!mine.length) continue;
+    const band = document.createElement("div");
+    band.className = "band";
+    band.innerHTML = "<b>" + title + "</b><span>" + mine.length + " 枚</span>";
+    out.appendChild(band);
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    for (const b of mine) {
+      const cell = document.createElement("div");
+      cell.className = "cell" + (NEW.includes(b.id) ? " new" : "");
+      cell.innerHTML = '<div class="pair"><div class="plain">' + b.icon + "</div>"
+        + "<div>" + (ink[b.id] || "") + "</div></div>"
+        + '<div class="nm">' + b.name + "</div>"
+        + '<div class="ds">' + b.desc + "</div>"
+        + '<div class="id">' + b.id + "</div>";
+      grid.appendChild(cell);
+    }
+    out.appendChild(grid);
+  }
+})();
+</script>
+</body>
+</html>

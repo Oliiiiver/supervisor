@@ -693,11 +693,11 @@
 
     // ---- 成就墙 ----
 
-    // 模块精通:单组 ≥20 题且正确率 ≥90%
+    // 模块精通:单组正确率 ≥90%
     const module90 = {};
     for (const key in Charts.MODULE_LABEL) module90[key] = false;
     for (const d of drills) {
-      if (d.total >= 20 && d.correct / d.total >= 0.9) module90[d.module] = true;
+      if (d.total > 0 && d.correct / d.total >= 0.9) module90[d.module] = true;
     }
 
     // 单日完成备考任务数峰值
