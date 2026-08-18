@@ -359,6 +359,24 @@ h2 {
   100% { transform: rotate(0) scale(1); }
 }
 
+/* 病假锁横幅:和全清横幅同一副骨架,但配色克制些——不是庆祝,是叫停 */
+.sickday {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--neutral);
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.sickday svg { width: 26px; height: 26px; flex: none; color: var(--accent); }
+
+/* 被锁上的任务:勾不动,整行退到背景里 */
+.task-item.locked { opacity: .5; }
+.task-item.locked .task-check { cursor: not-allowed; }
+
 .task-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;

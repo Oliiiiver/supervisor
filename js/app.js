@@ -5,6 +5,10 @@
 
   const DAILY_CAP = 100; // 每日积分上限(只作用于备考任务)
 
+  // 病假日:这天她只要完成任何一项任务,「东亚小孩」解锁,当天剩下的任务全部锁上。
+  // 判定和成就是同一个日子,改这里就够了(监督员模式不受锁影响,方便临时放行)
+  const SICK_DAY = "2026-08-19";
+
   // 两人各自的时区:备考任务按北京时间翻页,陪跑任务按伦敦时间翻页。
   // 这样无论谁在何时打开,看到的都是"她的今天 + 他的今天",视图完全一致。
   const TZ_HER = "Asia/Shanghai";
@@ -192,14 +196,17 @@
 
   let wasAllClear = null; // null = 初次渲染,不庆祝
 
-  function taskRow(t, ledgerEarnedFn) {
+  function taskRow(t, opts) {
+    const locked = !!(opts && opts.locked);
     const li = document.createElement("li");
-    li.className = "task-item" + (t.done ? " done" : "");
+    li.className = "task-item" + (t.done ? " done" : "") + (locked ? " locked" : "");
 
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "task-check";
     cb.checked = t.done;
+    cb.disabled = locked;
+    if (locked) cb.title = "今天病着,这项已经替你锁上了";
     cb.addEventListener("change", async function () {
       if (cb.checked) {
         const rect = cb.getBoundingClientRect();
@@ -465,10 +472,16 @@
     }
     wasAllClear = isAllClear;
 
+    // 病假锁:病假日当天她一勾完任务就把今天剩下的任务全锁上,
+    // 横幅顶在任务列表上方。监督员模式不锁,万一要临时放行
+    const sickLock = tHer === SICK_DAY && doneHer.length > 0;
+    $("#sickday").hidden = !sickLock;
+    if (sickLock) $("#sickday-done").textContent = doneHer.length;
+
     const ulHer = $("#task-list-her");
     ulHer.innerHTML = "";
     $("#task-empty-her").hidden = todaysHer.length > 0;
-    for (const t of todaysHer) ulHer.appendChild(taskRow(t));
+    for (const t of todaysHer) ulHer.appendChild(taskRow(t, { locked: sickLock && !isSup() }));
 
     const ulSup = $("#task-list-sup");
     ulSup.innerHTML = "";
@@ -726,6 +739,9 @@
     const monthDay = tHer.slice(5);
     const birthdayWindow = monthDay >= "11-30" || monthDay.slice(0, 2) === "12";
 
+    // 抱恙不辍:2026-08-19 她发烧那天,只要完成了任何一项任务就解锁(按北京时间的完成日)
+    const feverDay = tasks.some(t => t.owner === "her" && t.done && earnDay(t) === SICK_DAY);
+
     const ctx = {
       herDoneCount: tasks.filter(t => t.owner === "her" && t.done).length,
       allClearDays: allClearDays(tasks),
@@ -747,6 +763,7 @@
       ashore: !!settings.ashore,
       examEve: examEve,
       birthdayWindow: birthdayWindow,
+      feverDay: feverDay,
     };
 
     // 解锁即永久:已持久化的直接算解锁,新达成的补记

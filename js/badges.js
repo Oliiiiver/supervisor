@@ -305,6 +305,13 @@ window.Badges = (function () {
       test: ctx => ctx.ashore,
     },
     {
+      id: "fever-day",
+      name: "东亚小孩",
+      desc: "生病就去好好休息!!!",
+      icon: icon('<path d="M4 15h24"/><path d="M6 15h20l-2.4 8.4A4 4 0 0 1 19.8 26h-7.6a4 4 0 0 1-3.8-2.6z"/><path d="M14 22c2-1 4 1 6 0" stroke-width="1.2" opacity=".6"/><path d="M11 11c-1.3-1.9-1.3-3.6 0-5.4M16 10c-1.4-2.2-1.4-4.2 0-6.4M21 11c-1.3-1.9-1.3-3.6 0-5.4" stroke-width="1.4"/><path d="M6 29h20" stroke-width="1.4"/>'),
+      test: ctx => ctx.feverDay,
+    },
+    {
       id: "birthday",
       name: "生日快乐",
       desc: "11 月 30 日,这天最重要的不是备考",
