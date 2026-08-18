@@ -5,8 +5,9 @@
 
   const DAILY_CAP = 100; // 每日积分上限(只作用于备考任务)
 
-  // 病假日:这天她只要完成任何一项任务,「东亚小孩」解锁,当天剩下的任务全部锁上。
-  // 判定和成就是同一个日子,改这里就够了(监督员模式不受锁影响,方便临时放行)
+  // 病假日:这天她一打开页面,「东亚小孩」就解锁,当天的任务同时全部锁上——
+  // 不给她"再学一点"的机会。判定和成就是同一个日子,改这里就够了
+  // (监督员模式不受锁影响,也不会替她解锁,方便临时放行)
   const SICK_DAY = "2026-08-19";
 
   // 两人各自的时区:备考任务按北京时间翻页,陪跑任务按伦敦时间翻页。
@@ -472,11 +473,10 @@
     }
     wasAllClear = isAllClear;
 
-    // 病假锁:病假日当天她一勾完任务就把今天剩下的任务全锁上,
-    // 横幅顶在任务列表上方。监督员模式不锁,万一要临时放行
-    const sickLock = tHer === SICK_DAY && doneHer.length > 0;
+    // 病假锁:病假日一进页面就锁,不等她动手。横幅顶在任务列表上方,
+    // 监督员模式不锁,万一要临时放行
+    const sickLock = tHer === SICK_DAY;
     $("#sickday").hidden = !sickLock;
-    if (sickLock) $("#sickday-done").textContent = doneHer.length;
 
     const ulHer = $("#task-list-her");
     ulHer.innerHTML = "";
@@ -739,8 +739,9 @@
     const monthDay = tHer.slice(5);
     const birthdayWindow = monthDay >= "11-30" || monthDay.slice(0, 2) === "12";
 
-    // 抱恙不辍:2026-08-19 她发烧那天,只要完成了任何一项任务就解锁(按北京时间的完成日)
-    const feverDay = tasks.some(t => t.owner === "her" && t.done && earnDay(t) === SICK_DAY);
+    // 东亚小孩:病假日她一打开页面就解锁,不用先做点什么。
+    // 监督员自己看页面不算,免得他在伦敦替她把成就点了
+    const feverDay = tHer === SICK_DAY && !isSup();
 
     const ctx = {
       herDoneCount: tasks.filter(t => t.owner === "her" && t.done).length,
