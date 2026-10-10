@@ -41,6 +41,15 @@ window.Store = (function () {
         mode = "local";
         const raw = localStorage.getItem(LS_KEY);
         cache = raw ? JSON.parse(raw) : window.DemoData.seed();
+        // Remove legacy showcase-only data while preserving all other local records.
+        delete cache.draws;
+        delete cache.shelf;
+        delete cache.tiers;
+        delete cache.shelfLog;
+        if (cache.seq) {
+          delete cache.seq.draw;
+          delete cache.seq.shelfLog;
+        }
         save();
       }
     },
@@ -289,9 +298,9 @@ window.Store = (function () {
 
     async listExams() {
       if (mode === "local") {
-        return cache.exams.slice().sort((a, b) => a.date.localeCompare(b.date));
+        return cache.exams.slice().sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
       }
-      return sb(db.from("mock_exams").select("*").order("date"));
+      return sb(db.from("mock_exams").select("*").order("date").order("id"));
     },
 
     async addExam(e) {

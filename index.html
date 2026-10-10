@@ -7,8 +7,8 @@
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
 <script>/* 进页面先把上次选的风格穿上,避免闪一下白 */
 try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement.classList.add("theme-ink")}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=43">
-<link rel="stylesheet" href="css/theme-ink.css?v=43">
+<link rel="stylesheet" href="css/style.css?v=44">
+<link rel="stylesheet" href="css/theme-ink.css?v=44">
 </head>
 <body>
 
@@ -18,6 +18,7 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
     <button class="tab active" data-tab="plan">项目管理</button>
     <button class="tab" data-tab="rewards">奖励机制</button>
     <button class="tab" data-tab="track">学习轨迹</button>
+    <button class="tab" data-tab="exams">模考记录</button>
     <button class="tab" data-tab="board">留言板<span class="tab-dot" id="board-dot" hidden></span></button>
   </nav>
   <div class="header-right">
@@ -230,26 +231,105 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
       </form>
     </div>
 
+  </section>
+
+  <!-- ============ 模考记录 ============ -->
+  <section class="panel" id="tab-exams">
+
     <div class="card">
-      <h2>模考记录</h2>
-      <table class="data-table" id="exam-table">
-        <thead><tr>
-          <th>日期</th><th class="num">常识</th><th class="num">言语</th><th class="num">数量</th><th class="num">判断</th><th class="num">资料</th><th class="num">申论</th><th>备注</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-      <p class="empty-hint" id="exam-empty" hidden>还没有模考记录。</p>
-      <form class="exam-form" id="exam-form">
-        <input type="date" id="exam-form-date" required>
-        <input type="number" id="exam-changshi" placeholder="常识 %" min="0" max="100" required>
-        <input type="number" id="exam-yanyu" placeholder="言语 %" min="0" max="100" required>
-        <input type="number" id="exam-shuliang" placeholder="数量 %" min="0" max="100" required>
-        <input type="number" id="exam-panduan" placeholder="判断 %" min="0" max="100" required>
-        <input type="number" id="exam-ziliao" placeholder="资料 %" min="0" max="100" required>
-        <input type="number" id="exam-shenlun" placeholder="申论分" min="0" max="100">
-        <input type="text" id="exam-notes" placeholder="备注,如:粉笔模考 12 期">
-        <button type="submit">录入模考</button>
+      <h2>正确率走势 <span class="h2-note" id="exam-chart-title">限时完成</span></h2>
+      <div class="drill-filter" id="exam-progress-filter" aria-label="选择要查看的记录方式">
+        <button type="button" class="drill-chip active" data-exam-view="timed">限时完成</button>
+        <button type="button" class="drill-chip" data-exam-view="overtime">超时补做</button>
+      </div>
+      <div class="exam-progress-stats">
+        <div class="exam-progress-stat"><span>最近综合正确率</span><strong id="exam-latest-rate">—</strong></div>
+        <div class="exam-progress-stat"><span>较首次题数记录</span><strong id="exam-progress-delta">—</strong></div>
+        <div class="exam-progress-stat"><span>累计记录题数</span><strong id="exam-progress-total">0</strong></div>
+      </div>
+      <div class="chart-wrap" id="exam-chart-wrap"><canvas id="exam-chart" aria-label="各板块正确率走势" role="img"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h2>录入模考 <span class="h2-note">按板块记录总题数和正确数</span></h2>
+      <form class="exam-form exam-record-form" id="exam-form">
+        <div class="exam-record-meta">
+          <label class="exam-field" for="exam-form-date">模考日期
+            <input type="date" id="exam-form-date" required>
+          </label>
+          <label class="exam-field" for="exam-notes">套卷备注
+            <input type="text" id="exam-notes" placeholder="如:粉笔模考 12 期">
+          </label>
+        </div>
+
+        <fieldset class="exam-mode-picker">
+          <legend>记录方式</legend>
+          <div class="exam-mode-options">
+            <label class="exam-mode-option"><input type="radio" name="exam-mode" value="timed" checked><span>限时完成</span></label>
+            <label class="exam-mode-option"><input type="radio" name="exam-mode" value="overtime"><span>超时补做</span></label>
+          </div>
+        </fieldset>
+
+        <div class="exam-section-grid">
+          <section class="exam-section" data-exam-module="changshi">
+            <h3>常识</h3>
+            <div class="exam-count-inputs">
+              <label><span class="exam-total-label">总题数</span><input class="exam-total" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+              <label>正确数<input class="exam-correct" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+            </div>
+          </section>
+          <section class="exam-section" data-exam-module="yanyu">
+            <h3>言语</h3>
+            <div class="exam-count-inputs">
+              <label><span class="exam-total-label">总题数</span><input class="exam-total" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+              <label>正确数<input class="exam-correct" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+            </div>
+          </section>
+          <section class="exam-section" data-exam-module="shuliang">
+            <h3>数量</h3>
+            <div class="exam-count-inputs">
+              <label><span class="exam-total-label">总题数</span><input class="exam-total" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+              <label>正确数<input class="exam-correct" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+            </div>
+          </section>
+          <section class="exam-section" data-exam-module="panduan">
+            <h3>判断</h3>
+            <div class="exam-count-inputs">
+              <label><span class="exam-total-label">总题数</span><input class="exam-total" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+              <label>正确数<input class="exam-correct" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+            </div>
+          </section>
+          <section class="exam-section" data-exam-module="ziliao">
+            <h3>资料</h3>
+            <div class="exam-count-inputs">
+              <label><span class="exam-total-label">总题数</span><input class="exam-total" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+              <label>正确数<input class="exam-correct" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+            </div>
+          </section>
+          <section class="exam-section" data-exam-module="shenlun">
+            <h3>申论</h3>
+            <div class="exam-count-inputs">
+              <label><span class="exam-total-label">总题数</span><input class="exam-total" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+              <label>正确数<input class="exam-correct" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+            </div>
+          </section>
+        </div>
+
+        <button type="submit">保存模考记录</button>
       </form>
+    </div>
+
+    <div class="card">
+      <h2>记录列表 <span class="h2-note">正确数 / 总题数</span></h2>
+      <div class="exam-table-wrap">
+        <table class="data-table exam-table" id="exam-table">
+          <thead><tr>
+            <th>日期</th><th>方式</th><th class="num">常识</th><th class="num">言语</th><th class="num">数量</th><th class="num">判断</th><th class="num">资料</th><th class="num">申论</th><th>备注</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="empty-hint" id="exam-empty" hidden>还没有模考记录，先记下最近一次练习吧。</p>
     </div>
 
   </section>
@@ -324,14 +404,15 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=43"></script>
-<script src="js/demo-data.js?v=43"></script>
-<script src="js/store.js?v=43"></script>
-<script src="js/charts.js?v=43"></script>
-<script src="js/badges.js?v=43"></script>
-<script src="js/badges-ink.js?v=43"></script>
-<script src="js/juice.js?v=43"></script>
-<script src="js/pomodoro.js?v=43"></script>
-<script src="js/app.js?v=43"></script>
+<script src="js/config.js?v=44"></script>
+<script src="js/demo-data.js?v=44"></script>
+<script src="js/store.js?v=44"></script>
+<script src="js/charts.js?v=44"></script>
+<script src="js/badges.js?v=44"></script>
+<script src="js/badges-ink.js?v=44"></script>
+
+<script src="js/juice.js?v=44"></script>
+<script src="js/pomodoro.js?v=44"></script>
+<script src="js/app.js?v=44"></script>
 </body>
 </html>

@@ -5,6 +5,16 @@
 
   const DAILY_CAP = 100; // 每日积分上限(只作用于备考任务)
 
+  const EXAM_MODULES = [
+    { key: "changshi", label: "常识" },
+    { key: "yanyu", label: "言语" },
+    { key: "shuliang", label: "数量" },
+    { key: "panduan", label: "判断" },
+    { key: "ziliao", label: "资料" },
+    { key: "shenlun", label: "申论" },
+  ];
+  let examChartMode = "timed";
+
   // 病假日:这天她一打开页面,「东亚小孩」就解锁,当天的任务同时全部锁上——
   // 不给她"再学一点"的机会。判定和成就是同一个日子,改这里就够了
   // (监督员模式不受锁影响,也不会替她解锁,方便临时放行)
@@ -56,7 +66,7 @@
     updateBoardDot(); // 进出留言板时同步角标显隐
   });
 
-  // 支持 #rewards / #track / #board 直达
+  // 支持 #rewards / #track / #exams / #board 直达
   if (location.hash) activateTab(location.hash.slice(1));
 
   // ---------- 监督员模式 ----------
@@ -506,6 +516,7 @@
     $("#streak-days").textContent = currentStreak(doneDates(tasks, "her"), todayHer());
 
     // 奖品目录
+
     const grid = $("#reward-grid");
     grid.innerHTML = "";
     $("#reward-empty").hidden = rewards.length > 0;
@@ -674,6 +685,57 @@
     $("#ds-total").textContent = questions + " 题 · " + shown.length + " 组";
   }
 
+  function renderExamProgress(exams) {
+    const label = examChartMode === "overtime" ? "超时补做" : "限时完成";
+    $("#exam-chart-title").textContent = label;
+    document.querySelectorAll("#exam-progress-filter [data-exam-view]").forEach(function (button) {
+      button.classList.toggle("active", button.dataset.examView === examChartMode);
+    });
+
+    function isLegacy(exam) {
+      return !exam.results || typeof exam.results !== "object" || !Object.keys(exam.results).length;
+    }
+    const shown = exams.filter(function (exam) {
+      return exam.mode === examChartMode || (examChartMode === "timed" && isLegacy(exam));
+    });
+    function counts(exam) {
+      return EXAM_MODULES.reduce(function (sum, module) {
+        const result = exam.results[module.key];
+        if (result && Number(result.total) > 0) {
+          sum.total += Number(result.total);
+          sum.correct += Number(result.correct);
+        }
+        return sum;
+      }, { total: 0, correct: 0 });
+    }
+    const usable = shown.filter(exam => !isLegacy(exam) && counts(exam).total > 0);
+    const totals = usable.map(counts);
+    const latest = totals[totals.length - 1];
+    const first = totals[0];
+    $("#exam-latest-rate").textContent = latest
+      ? Math.round(latest.correct / latest.total * 100) + "%" : "—";
+    const delta = $("#exam-progress-delta");
+    delta.className = "";
+    if (totals.length < 2) {
+      delta.textContent = totals.length ? "首次记录" : "待下次记录";
+    } else {
+      const diff = Math.round(latest.correct / latest.total * 100)
+        - Math.round(first.correct / first.total * 100);
+      delta.textContent = diff === 0 ? "持平"
+        : (diff > 0 ? "↑ " : "↓ ") + Math.abs(diff) + " 个百分点";
+      delta.classList.add(diff > 0 ? "delta-pos" : diff < 0 ? "delta-neg" : "delta-flat");
+    }
+    $("#exam-progress-total").textContent = totals.length
+      ? totals.reduce((sum, result) => sum + result.total, 0) + " 题" : "—";
+
+    const hasLegacyPoints = examChartMode === "timed" && shown.some(function (exam) {
+      return isLegacy(exam) && EXAM_MODULES.slice(0, 5).some(module => exam[module.key] != null);
+    });
+    const hasData = usable.length > 0 || hasLegacyPoints;
+    $("#exam-chart-wrap").style.display = hasData ? "" : "none";
+    if (hasData) Charts.renderExamChart($("#exam-chart"), shown);
+  }
+
   // ---------- 渲染:学习轨迹 ----------
 
   async function renderTrack() {
@@ -756,7 +818,10 @@
       drillCount: drills.length,
       totalQuestions: totalQuestions, // 文官系列按累计题数
 
-      examCount: exams.length,
+      // 超时补做是同一套模考的补充记录,不另算一套;旧格式记录仍按模考计数。
+      examCount: exams.filter(function (exam) {
+        return exam.mode === "timed" || !exam.results || !Object.keys(exam.results).length;
+      }).length,
       bothDays: bothDays,
       dayMaxDone: Math.max(0, ...Object.values(doneByDate)),
       earlyBird: earlyBird,
@@ -856,21 +921,51 @@
     }
     if (!$("#drill-date").value) $("#drill-date").value = todayHer();
 
-    // 模考记录(留框架,后期启用)
+    // 模考记录
+    renderExamProgress(exams);
     const tbody = $("#exam-table tbody");
     tbody.innerHTML = "";
     $("#exam-empty").hidden = exams.length > 0;
     for (const e of exams.slice().reverse()) {
       const tr = document.createElement("tr");
-      const cells = [
-        fmtDate(e.date),
-        e.changshi, e.yanyu, e.shuliang, e.panduan, e.ziliao,
-        e.shenlun == null ? "—" : e.shenlun,
-      ];
-      tr.innerHTML = cells.map(function (v, i) {
-        return '<td class="' + (i > 0 ? "num" : "") + '">' + v + (i > 0 && i < 6 && typeof v === "number" ? "%" : "") + "</td>";
-      }).join("") + "<td></td>";
-      tr.lastChild.textContent = e.notes || "";
+      const legacy = !e.results || typeof e.results !== "object" || !Object.keys(e.results).length;
+      const dateCell = document.createElement("td");
+      dateCell.textContent = fmtDate(e.date);
+      tr.appendChild(dateCell);
+
+      const modeCell = document.createElement("td");
+      const modeTag = document.createElement("span");
+      modeTag.className = "exam-mode-tag";
+      if (legacy) {
+        modeTag.textContent = "旧记录";
+      } else if (e.mode === "overtime") {
+        modeTag.textContent = "超时补做";
+        modeTag.classList.add("exam-mode-overtime");
+      } else {
+        modeTag.textContent = "限时完成";
+      }
+      modeCell.appendChild(modeTag);
+      tr.appendChild(modeCell);
+
+      EXAM_MODULES.forEach(function (module) {
+        const cell = document.createElement("td");
+        cell.className = "num";
+        if (legacy) {
+          const oldValue = e[module.key];
+          cell.textContent = oldValue == null ? "—"
+            : module.key === "shenlun" ? oldValue + " 分" : oldValue + "%";
+          cell.title = "旧记录仅保存了百分比,无法还原题数";
+        } else {
+          const result = e.results[module.key];
+          cell.textContent = result && Number(result.total) > 0
+            ? Number(result.correct) + "/" + Number(result.total) : "—";
+        }
+        tr.appendChild(cell);
+      });
+
+      const notesCell = document.createElement("td");
+      notesCell.textContent = e.notes || "";
+      tr.appendChild(notesCell);
       tbody.appendChild(tr);
     }
     if (!$("#exam-form-date").value) $("#exam-form-date").value = todayHer();
@@ -1435,23 +1530,46 @@
     refresh();
   });
 
+  $("#exam-form").addEventListener("change", function (e) {
+    if (e.target.name !== "exam-mode") return;
+    document.querySelectorAll(".exam-total-label").forEach(function (label) {
+      label.textContent = e.target.value === "overtime" ? "补做题数" : "总题数";
+    });
+  });
+
+  $("#exam-progress-filter").addEventListener("click", function (e) {
+    const button = e.target.closest("[data-exam-view]");
+    if (!button || button.dataset.examView === examChartMode) return;
+    examChartMode = button.dataset.examView;
+    refresh();
+  });
+
   $("#exam-form").addEventListener("submit", async function (e) {
     e.preventDefault();
-    const val = id => {
-      const v = $(id).value;
-      return v === "" ? null : parseInt(v, 10);
-    };
+    const results = {};
+    let totalQuestions = 0;
+    for (const section of document.querySelectorAll("[data-exam-module]")) {
+      const total = parseInt(section.querySelector(".exam-total").value, 10) || 0;
+      const correct = parseInt(section.querySelector(".exam-correct").value, 10) || 0;
+      if (correct > total) {
+        alert(section.querySelector("h3").textContent + "的正确数不能超过总题数。");
+        return;
+      }
+      results[section.dataset.examModule] = { total: total, correct: correct };
+      totalQuestions += total;
+    }
+    if (!totalQuestions) {
+      alert("至少填写一个板块的总题数。");
+      return;
+    }
     await Store.addExam({
       date: $("#exam-form-date").value,
-      changshi: val("#exam-changshi"),
-      yanyu: val("#exam-yanyu"),
-      shuliang: val("#exam-shuliang"),
-      panduan: val("#exam-panduan"),
-      ziliao: val("#exam-ziliao"),
-      shenlun: val("#exam-shenlun"),
+      mode: $("#exam-form input[name='exam-mode']:checked").value,
+      results: results,
       notes: $("#exam-notes").value.trim(),
     });
     this.reset();
+    $("#exam-form-date").value = todayHer();
     refresh();
   });
 
@@ -1485,6 +1603,7 @@
   function applyTheme(ink) {
     document.documentElement.classList.toggle("theme-ink", ink);
     $("#theme-toggle").textContent = ink ? "简白" : "纸墨";
+    
   }
 
   $("#theme-toggle").addEventListener("click", function () {

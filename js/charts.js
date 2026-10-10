@@ -70,6 +70,7 @@ window.Charts = (function () {
   };
 
   let drillChart = null;
+  let examChart = null;
 
   // 专项刷题走势:x 轴为日期,每个模块一条线,y 为该组练习的正确率。
   // 同一天同模块多组练习时合并(总对题数 / 总题数)。
@@ -149,6 +150,108 @@ window.Charts = (function () {
     });
   }
 
+  const EXAM_MODULES = [
+    { key: "changshi", label: "常识" },
+    { key: "yanyu", label: "言语" },
+    { key: "shuliang", label: "数量" },
+    { key: "panduan", label: "判断" },
+    { key: "ziliao", label: "资料" },
+    { key: "shenlun", label: "申论" },
+  ];
+
+  // 模考走势按记录次数排列,限时与超时补做由页面分别筛选。
+  function renderExamChart(canvas, exams) {
+    if (examChart) examChart.destroy();
+    const c = ink();
+    const colors = isDark() ? SERIES_DARK : SERIES_LIGHT;
+    function isLegacy(exam) {
+      return !exam.results || typeof exam.results !== "object" || !Object.keys(exam.results).length;
+    }
+    function accuracy(exam, module) {
+      const result = exam.results && exam.results[module.key];
+      if (result && Number(result.total) > 0)
+        return Number(result.correct) / Number(result.total) * 100;
+      // 旧模考的五个客观板块本来就是百分比,可直接作为历史点展示。
+      // 申论旧字段是分数,不和正确率混在同一条图里。
+      if (isLegacy(exam) && module.key !== "shenlun" && exam[module.key] != null)
+        return Number(exam[module.key]);
+      return null;
+    }
+    const usable = exams.filter(function (exam) {
+      return EXAM_MODULES.some(module => accuracy(exam, module) != null);
+    });
+    const labels = usable.map(function (exam, i) {
+      return exam.date.slice(5).replace("-", "/") + " · " + (i + 1);
+    });
+    const datasets = EXAM_MODULES.map(function (module, i) {
+      const hasResults = usable.some(function (exam) {
+        return accuracy(exam, module) != null;
+      });
+      if (!hasResults) return null;
+      return {
+        label: module.label,
+        data: usable.map(function (exam) {
+          const value = accuracy(exam, module);
+          return value == null ? null : Math.round(value);
+        }),
+        borderColor: colors[i],
+        backgroundColor: colors[i],
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointHitRadius: 12,
+        tension: 0,
+        spanGaps: true,
+      };
+    }).filter(Boolean);
+
+    examChart = new Chart(canvas, {
+      type: "line",
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        layout: { padding: { right: 64, top: 8 } },
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          y: {
+            min: 0, max: 100,
+            ticks: { color: c.muted, callback: v => v + "%" },
+            grid: { color: c.grid },
+            border: { color: c.axis },
+          },
+          x: {
+            ticks: { color: c.muted },
+            grid: { display: false },
+            border: { color: c.axis },
+          },
+        },
+        plugins: {
+          legend: datasets.length > 1 ? {
+            position: "top",
+            align: "start",
+            labels: { color: c.secondary, boxWidth: 12, boxHeight: 12 },
+          } : { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                const exam = usable[ctx.dataIndex];
+                const module = EXAM_MODULES.find(m => m.label === ctx.dataset.label);
+                const result = exam.results && exam.results[module.key];
+                return result && Number(result.total) > 0
+                  ? " " + ctx.dataset.label + " " + result.correct + "/" + result.total
+                    + " · " + ctx.formattedValue + "%"
+                  : " " + ctx.dataset.label + " " + ctx.formattedValue + "% · 旧记录";
+              },
+            },
+          },
+        },
+      },
+      plugins: [endLabels],
+    });
+  }
+
   // 打卡热力图:列为周(周一起),格子颜色 = 当天完成任务数。
   // anchorISO 是"当事人时区的今天"(YYYY-MM-DD),网格以它为最后一天;
   // 日期运算全部走 UTC,避免受浏览器本地时区影响。
@@ -198,6 +301,7 @@ window.Charts = (function () {
 
   return {
     renderDrillChart: renderDrillChart,
+    renderExamChart: renderExamChart,
     renderHeatmap: renderHeatmap,
     MODULE_LABEL: MODULE_LABEL,
   };

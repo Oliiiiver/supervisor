@@ -62,13 +62,15 @@ create table drills (
 create table mock_exams (
   id       bigint generated always as identity primary key,
   date     date not null,
-  changshi int,   -- 常识正确率 %
-  yanyu    int,   -- 言语正确率 %
-  shuliang int,   -- 数量正确率 %
-  panduan  int,   -- 判断正确率 %
-  ziliao   int,   -- 资料正确率 %
-  shenlun  int,   -- 申论分数
-  notes    text not null default ''
+  changshi int,   -- 旧记录:常识正确率 %
+  yanyu    int,   -- 旧记录:言语正确率 %
+  shuliang int,   -- 旧记录:数量正确率 %
+  panduan  int,   -- 旧记录:判断正确率 %
+  ziliao   int,   -- 旧记录:资料正确率 %
+  shenlun  int,   -- 旧记录:申论分数
+  notes    text not null default '',
+  mode     text not null default 'timed' check (mode in ('timed', 'overtime')),
+  results  jsonb not null default '{}'::jsonb -- 模块名 → { total, correct }
 );
 
 -- 任务目标:钉在任务列上方的阶段主线(每天的任务都在推进它),到期自动消失
