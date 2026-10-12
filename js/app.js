@@ -958,7 +958,7 @@
         } else {
           const result = e.results[module.key];
           cell.textContent = result && Number(result.total) > 0
-            ? Number(result.correct) + "/" + Number(result.total) : "—";
+            ? (Number(result.total) - Number(result.correct)) + "/" + Number(result.total) : "—";
         }
         tr.appendChild(cell);
       });
@@ -1550,11 +1550,12 @@
     let totalQuestions = 0;
     for (const section of document.querySelectorAll("[data-exam-module]")) {
       const total = parseInt(section.querySelector(".exam-total").value, 10) || 0;
-      const correct = parseInt(section.querySelector(".exam-correct").value, 10) || 0;
-      if (correct > total) {
-        alert(section.querySelector("h3").textContent + "的正确数不能超过总题数。");
+      const wrong = parseInt(section.querySelector(".exam-wrong").value, 10) || 0;
+      if (wrong > total) {
+        alert(section.querySelector("h3").textContent + "的错误数不能超过题数。");
         return;
       }
+      const correct = total - wrong;
       results[section.dataset.examModule] = { total: total, correct: correct };
       totalQuestions += total;
     }
