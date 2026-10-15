@@ -13,7 +13,19 @@
     { key: "ziliao", label: "资料" },
     { key: "shenlun", label: "申论" },
   ];
+  const OBJECTIVE_EXAM_MODULES = EXAM_MODULES.filter(module => module.key !== "shenlun");
   let examChartMode = "timed";
+
+  function objectiveExamCounts(exam) {
+    return OBJECTIVE_EXAM_MODULES.reduce(function (sum, module) {
+      const result = exam.results && exam.results[module.key];
+      if (result && Number(result.total) > 0) {
+        sum.total += Number(result.total);
+        sum.correct += Number(result.correct);
+      }
+      return sum;
+    }, { total: 0, correct: 0 });
+  }
 
   // 病假日:这天她一打开页面,「东亚小孩」就解锁,当天的任务同时全部锁上——
   // 不给她"再学一点"的机会。判定和成就是同一个日子,改这里就够了
@@ -698,18 +710,8 @@
     const shown = exams.filter(function (exam) {
       return exam.mode === examChartMode || (examChartMode === "timed" && isLegacy(exam));
     });
-    function counts(exam) {
-      return EXAM_MODULES.reduce(function (sum, module) {
-        const result = exam.results[module.key];
-        if (result && Number(result.total) > 0) {
-          sum.total += Number(result.total);
-          sum.correct += Number(result.correct);
-        }
-        return sum;
-      }, { total: 0, correct: 0 });
-    }
-    const usable = shown.filter(exam => !isLegacy(exam) && counts(exam).total > 0);
-    const totals = usable.map(counts);
+    const usable = shown.filter(exam => !isLegacy(exam) && objectiveExamCounts(exam).total > 0);
+    const totals = usable.map(objectiveExamCounts);
     const latest = totals[totals.length - 1];
     const first = totals[0];
     $("#exam-latest-rate").textContent = latest
@@ -727,9 +729,10 @@
     }
     $("#exam-progress-total").textContent = totals.length
       ? totals.reduce((sum, result) => sum + result.total, 0) + " 题" : "—";
+    $("#exam-progress-errors").textContent = latest ? String(latest.total - latest.correct) : "—";
 
     const hasLegacyPoints = examChartMode === "timed" && shown.some(function (exam) {
-      return isLegacy(exam) && EXAM_MODULES.slice(0, 5).some(module => exam[module.key] != null);
+      return isLegacy(exam) && OBJECTIVE_EXAM_MODULES.some(module => exam[module.key] != null);
     });
     const hasData = usable.length > 0 || hasLegacyPoints;
     $("#exam-chart-wrap").style.display = hasData ? "" : "none";
@@ -947,13 +950,26 @@
       modeCell.appendChild(modeTag);
       tr.appendChild(modeCell);
 
+      const wrongCell = document.createElement("td");
+      wrongCell.className = "num";
+      if (legacy) {
+        wrongCell.textContent = "—";
+        wrongCell.title = "旧记录无法还原总错题数";
+      } else {
+        const objective = objectiveExamCounts(e);
+        wrongCell.textContent = String(objective.total - objective.correct);
+      }
+      tr.appendChild(wrongCell);
+
       EXAM_MODULES.forEach(function (module) {
         const cell = document.createElement("td");
         cell.className = "num";
-        if (legacy) {
+        if (module.key === "shenlun") {
+          cell.textContent = e.shenlun == null ? "—" : e.shenlun + " 分";
+        } else if (legacy) {
           const oldValue = e[module.key];
           cell.textContent = oldValue == null ? "—"
-            : module.key === "shenlun" ? oldValue + " 分" : oldValue + "%";
+            : oldValue + "%";
           cell.title = "旧记录仅保存了百分比,无法还原题数";
         } else {
           const result = e.results[module.key];
@@ -1563,10 +1579,17 @@
       alert("至少填写一个板块的总题数。");
       return;
     }
+    const essayScoreRaw = $("#exam-shenlun-score").value;
+    const essayScore = essayScoreRaw === "" ? null : parseInt(essayScoreRaw, 10);
+    if (essayScore !== null && (!Number.isInteger(essayScore) || essayScore < 0 || essayScore > 100)) {
+      alert("申论得分应在 0 到 100 之间。");
+      return;
+    }
     await Store.addExam({
       date: $("#exam-form-date").value,
       mode: $("#exam-form input[name='exam-mode']:checked").value,
       results: results,
+      shenlun: essayScore,
       notes: $("#exam-notes").value.trim(),
     });
     this.reset();

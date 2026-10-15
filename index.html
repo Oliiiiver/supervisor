@@ -7,8 +7,8 @@
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
 <script>/* 进页面先把上次选的风格穿上,避免闪一下白 */
 try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement.classList.add("theme-ink")}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=45">
-<link rel="stylesheet" href="css/theme-ink.css?v=45">
+<link rel="stylesheet" href="css/style.css?v=46">
+<link rel="stylesheet" href="css/theme-ink.css?v=46">
 </head>
 <body>
 
@@ -246,12 +246,13 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
         <div class="exam-progress-stat"><span>最近综合正确率</span><strong id="exam-latest-rate">—</strong></div>
         <div class="exam-progress-stat"><span>较首次题数记录</span><strong id="exam-progress-delta">—</strong></div>
         <div class="exam-progress-stat"><span>累计记录题数</span><strong id="exam-progress-total">0</strong></div>
+        <div class="exam-progress-stat"><span>最近一场总错题</span><strong id="exam-progress-errors">—</strong></div>
       </div>
       <div class="chart-wrap" id="exam-chart-wrap"><canvas id="exam-chart" aria-label="各板块正确率走势" role="img"></canvas></div>
     </div>
 
     <div class="card">
-      <h2>录入模考 <span class="h2-note">按板块记录题数和错误数</span></h2>
+      <h2>录入模考 <span class="h2-note">客观题记录题数和错误数，申论记录得分</span></h2>
       <form class="exam-form exam-record-form" id="exam-form">
         <div class="exam-record-meta">
           <label class="exam-field" for="exam-form-date">模考日期
@@ -306,11 +307,10 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
               <label>错误数<input class="exam-wrong" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
             </div>
           </section>
-          <section class="exam-section" data-exam-module="shenlun">
+          <section class="exam-section">
             <h3>申论</h3>
-            <div class="exam-count-inputs">
-              <label><span class="exam-total-label">总题数</span><input class="exam-total" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
-              <label>错误数<input class="exam-wrong" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
+            <div class="exam-count-inputs exam-essay-score">
+              <label>申论得分<input id="exam-shenlun-score" type="number" min="0" max="100" step="1" inputmode="numeric"></label>
             </div>
           </section>
         </div>
@@ -320,11 +320,11 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
     </div>
 
     <div class="card">
-      <h2>记录列表 <span class="h2-note">错误数 / 总题数</span></h2>
+      <h2>记录列表 <span class="h2-note">客观题错误数 / 总题数</span></h2>
       <div class="exam-table-wrap">
         <table class="data-table exam-table" id="exam-table">
           <thead><tr>
-            <th>日期</th><th>方式</th><th class="num">常识</th><th class="num">言语</th><th class="num">数量</th><th class="num">判断</th><th class="num">资料</th><th class="num">申论</th><th>备注</th>
+            <th>日期</th><th>方式</th><th class="num">总错题</th><th class="num">常识</th><th class="num">言语</th><th class="num">数量</th><th class="num">判断</th><th class="num">资料</th><th class="num">申论得分</th><th>备注</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -404,15 +404,15 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=45"></script>
-<script src="js/demo-data.js?v=45"></script>
-<script src="js/store.js?v=45"></script>
-<script src="js/charts.js?v=45"></script>
-<script src="js/badges.js?v=45"></script>
-<script src="js/badges-ink.js?v=45"></script>
+<script src="js/config.js?v=46"></script>
+<script src="js/demo-data.js?v=46"></script>
+<script src="js/store.js?v=46"></script>
+<script src="js/charts.js?v=46"></script>
+<script src="js/badges.js?v=46"></script>
+<script src="js/badges-ink.js?v=46"></script>
 
-<script src="js/juice.js?v=45"></script>
-<script src="js/pomodoro.js?v=45"></script>
-<script src="js/app.js?v=45"></script>
+<script src="js/juice.js?v=46"></script>
+<script src="js/pomodoro.js?v=46"></script>
+<script src="js/app.js?v=46"></script>
 </body>
 </html>

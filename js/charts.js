@@ -156,7 +156,6 @@ window.Charts = (function () {
     { key: "shuliang", label: "数量" },
     { key: "panduan", label: "判断" },
     { key: "ziliao", label: "资料" },
-    { key: "shenlun", label: "申论" },
   ];
 
   // 模考走势按记录次数排列,限时与超时补做由页面分别筛选。
@@ -172,8 +171,7 @@ window.Charts = (function () {
       if (result && Number(result.total) > 0)
         return Number(result.correct) / Number(result.total) * 100;
       // 旧模考的五个客观板块本来就是百分比,可直接作为历史点展示。
-      // 申论旧字段是分数,不和正确率混在同一条图里。
-      if (isLegacy(exam) && module.key !== "shenlun" && exam[module.key] != null)
+      if (isLegacy(exam) && exam[module.key] != null)
         return Number(exam[module.key]);
       return null;
     }
