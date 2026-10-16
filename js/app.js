@@ -711,6 +711,7 @@
       return exam.mode === examChartMode || (examChartMode === "timed" && isLegacy(exam));
     });
     const usable = shown.filter(exam => !isLegacy(exam) && objectiveExamCounts(exam).total > 0);
+    const errorTrend = usable.filter(exam => objectiveExamCounts(exam).total > 0);
     const totals = usable.map(objectiveExamCounts);
     const latest = totals[totals.length - 1];
     const first = totals[0];
@@ -737,6 +738,11 @@
     const hasData = usable.length > 0 || hasLegacyPoints;
     $("#exam-chart-wrap").style.display = hasData ? "" : "none";
     if (hasData) Charts.renderExamChart($("#exam-chart"), shown);
+
+    $("#exam-errors-chart-title").textContent = label + " · 五个客观板块合计";
+    $("#exam-errors-chart-wrap").hidden = errorTrend.length === 0;
+    $("#exam-errors-empty").hidden = errorTrend.length > 0;
+    if (errorTrend.length) Charts.renderExamWrongChart($("#exam-errors-chart"), errorTrend);
   }
 
   // ---------- 渲染:学习轨迹 ----------
@@ -963,15 +969,17 @@
 
       EXAM_MODULES.forEach(function (module) {
         const cell = document.createElement("td");
-        cell.className = "num";
         if (module.key === "shenlun") {
-          cell.textContent = e.shenlun == null ? "—" : e.shenlun + " 分";
+          cell.className = "exam-reflection-cell";
+          cell.textContent = e.shenlun_reflection || (e.shenlun == null ? "—" : "历史得分：" + e.shenlun + " 分");
         } else if (legacy) {
+          cell.className = "num";
           const oldValue = e[module.key];
           cell.textContent = oldValue == null ? "—"
             : oldValue + "%";
           cell.title = "旧记录仅保存了百分比,无法还原题数";
         } else {
+          cell.className = "num";
           const result = e.results[module.key];
           cell.textContent = result && Number(result.total) > 0
             ? (Number(result.total) - Number(result.correct)) + "/" + Number(result.total) : "—";
@@ -1579,17 +1587,11 @@
       alert("至少填写一个板块的总题数。");
       return;
     }
-    const essayScoreRaw = $("#exam-shenlun-score").value;
-    const essayScore = essayScoreRaw === "" ? null : parseInt(essayScoreRaw, 10);
-    if (essayScore !== null && (!Number.isInteger(essayScore) || essayScore < 0 || essayScore > 100)) {
-      alert("申论得分应在 0 到 100 之间。");
-      return;
-    }
     await Store.addExam({
       date: $("#exam-form-date").value,
       mode: $("#exam-form input[name='exam-mode']:checked").value,
       results: results,
-      shenlun: essayScore,
+      shenlun_reflection: $("#exam-shenlun-reflection").value.trim(),
       notes: $("#exam-notes").value.trim(),
     });
     this.reset();

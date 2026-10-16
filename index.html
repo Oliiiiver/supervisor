@@ -7,8 +7,8 @@
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
 <script>/* 进页面先把上次选的风格穿上,避免闪一下白 */
 try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement.classList.add("theme-ink")}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=46">
-<link rel="stylesheet" href="css/theme-ink.css?v=46">
+<link rel="stylesheet" href="css/style.css?v=47">
+<link rel="stylesheet" href="css/theme-ink.css?v=47">
 </head>
 <body>
 
@@ -249,10 +249,20 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
         <div class="exam-progress-stat"><span>最近一场总错题</span><strong id="exam-progress-errors">—</strong></div>
       </div>
       <div class="chart-wrap" id="exam-chart-wrap"><canvas id="exam-chart" aria-label="各板块正确率走势" role="img"></canvas></div>
+      <div class="exam-error-trend">
+        <div class="exam-trend-heading">
+          <h3>每次总错题</h3>
+          <span id="exam-errors-chart-title">限时完成 · 五个客观板块合计</span>
+        </div>
+        <div class="chart-wrap exam-error-chart-wrap" id="exam-errors-chart-wrap" hidden>
+          <canvas id="exam-errors-chart" aria-label="每次模考总错题数变化" role="img"></canvas>
+        </div>
+        <p class="empty-hint" id="exam-errors-empty" hidden>从下一次模考记录开始显示总错题变化。</p>
+      </div>
     </div>
 
     <div class="card">
-      <h2>录入模考 <span class="h2-note">客观题记录题数和错误数，申论记录得分</span></h2>
+      <h2>录入模考 <span class="h2-note">客观题记录题数和错误数，申论记录刷题感悟</span></h2>
       <form class="exam-form exam-record-form" id="exam-form">
         <div class="exam-record-meta">
           <label class="exam-field" for="exam-form-date">模考日期
@@ -309,9 +319,9 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
           </section>
           <section class="exam-section">
             <h3>申论</h3>
-            <div class="exam-count-inputs exam-essay-score">
-              <label>申论得分<input id="exam-shenlun-score" type="number" min="0" max="100" step="1" inputmode="numeric"></label>
-            </div>
+            <label class="exam-reflection-field" for="exam-shenlun-reflection">刷题感悟
+              <textarea id="exam-shenlun-reflection" rows="3" maxlength="2000" placeholder="记录批改经验、常见问题或下一步改进方向"></textarea>
+            </label>
           </section>
         </div>
 
@@ -324,7 +334,7 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
       <div class="exam-table-wrap">
         <table class="data-table exam-table" id="exam-table">
           <thead><tr>
-            <th>日期</th><th>方式</th><th class="num">总错题</th><th class="num">常识</th><th class="num">言语</th><th class="num">数量</th><th class="num">判断</th><th class="num">资料</th><th class="num">申论得分</th><th>备注</th>
+            <th>日期</th><th>方式</th><th class="num">总错题</th><th class="num">常识</th><th class="num">言语</th><th class="num">数量</th><th class="num">判断</th><th class="num">资料</th><th>申论感悟</th><th>备注</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -404,15 +414,15 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=46"></script>
-<script src="js/demo-data.js?v=46"></script>
-<script src="js/store.js?v=46"></script>
-<script src="js/charts.js?v=46"></script>
-<script src="js/badges.js?v=46"></script>
-<script src="js/badges-ink.js?v=46"></script>
+<script src="js/config.js?v=47"></script>
+<script src="js/demo-data.js?v=47"></script>
+<script src="js/store.js?v=47"></script>
+<script src="js/charts.js?v=47"></script>
+<script src="js/badges.js?v=47"></script>
+<script src="js/badges-ink.js?v=47"></script>
 
-<script src="js/juice.js?v=46"></script>
-<script src="js/pomodoro.js?v=46"></script>
-<script src="js/app.js?v=46"></script>
+<script src="js/juice.js?v=47"></script>
+<script src="js/pomodoro.js?v=47"></script>
+<script src="js/app.js?v=47"></script>
 </body>
 </html>

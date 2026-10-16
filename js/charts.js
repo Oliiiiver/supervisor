@@ -71,6 +71,7 @@ window.Charts = (function () {
 
   let drillChart = null;
   let examChart = null;
+  let examWrongChart = null;
 
   // 专项刷题走势:x 轴为日期,每个模块一条线,y 为该组练习的正确率。
   // 同一天同模块多组练习时合并(总对题数 / 总题数)。
@@ -250,6 +251,77 @@ window.Charts = (function () {
     });
   }
 
+  // 每次模考的总错题数:旧记录只有百分比,无法还原准确错题数,不纳入走势。
+  function renderExamWrongChart(canvas, exams) {
+    if (examWrongChart) examWrongChart.destroy();
+    const c = ink();
+    const color = isInk() ? "#b03a24" : isDark() ? "#e66767" : "#e34948";
+    const points = exams.map(function (exam, i) {
+      const wrong = ["changshi", "yanyu", "shuliang", "panduan", "ziliao"]
+        .reduce(function (sum, key) {
+          const result = exam.results && exam.results[key];
+          if (result && Number(result.total) > 0)
+            sum += Number(result.total) - Number(result.correct);
+          return sum;
+        }, 0);
+      return {
+        label: exam.date.slice(5).replace("-", "/") + " · " + (i + 1),
+        wrong: wrong,
+        date: exam.date,
+      };
+    });
+
+    examWrongChart = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: points.map(point => point.label),
+        datasets: [{
+          label: "总错题",
+          data: points.map(point => point.wrong),
+          borderColor: color,
+          backgroundColor: color,
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointHitRadius: 12,
+          tension: 0.2,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: c.muted,
+              precision: 0,
+              callback: value => Number.isInteger(value) ? value : null,
+            },
+            grid: { color: c.grid },
+            border: { color: c.axis },
+          },
+          x: {
+            ticks: { color: c.muted },
+            grid: { display: false },
+            border: { color: c.axis },
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => points[items[0].dataIndex].date,
+              label: ctx => " 总错题 " + ctx.formattedValue + " 题",
+            },
+          },
+        },
+      },
+    });
+  }
+
   // 打卡热力图:列为周(周一起),格子颜色 = 当天完成任务数。
   // anchorISO 是"当事人时区的今天"(YYYY-MM-DD),网格以它为最后一天;
   // 日期运算全部走 UTC,避免受浏览器本地时区影响。
@@ -300,6 +372,7 @@ window.Charts = (function () {
   return {
     renderDrillChart: renderDrillChart,
     renderExamChart: renderExamChart,
+    renderExamWrongChart: renderExamWrongChart,
     renderHeatmap: renderHeatmap,
     MODULE_LABEL: MODULE_LABEL,
   };

@@ -68,6 +68,7 @@ create table mock_exams (
   panduan  int,   -- 旧记录:判断正确率 %
   ziliao   int,   -- 旧记录:资料正确率 %
   shenlun  int,   -- 旧记录:申论分数
+  shenlun_reflection text not null default '', -- 申论批改后的刷题感悟
   notes    text not null default '',
   mode     text not null default 'timed' check (mode in ('timed', 'overtime')),
   results  jsonb not null default '{}'::jsonb -- 模块名 → { total, correct }
