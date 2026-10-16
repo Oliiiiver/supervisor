@@ -5,27 +5,14 @@
 
   const DAILY_CAP = 100; // 每日积分上限(只作用于备考任务)
 
-  const EXAM_MODULES = [
-    { key: "changshi", label: "常识" },
-    { key: "yanyu", label: "言语" },
-    { key: "shuliang", label: "数量" },
-    { key: "panduan", label: "判断" },
-    { key: "ziliao", label: "资料" },
-    { key: "shenlun", label: "申论" },
-  ];
-  const OBJECTIVE_EXAM_MODULES = EXAM_MODULES.filter(module => module.key !== "shenlun");
-  let examChartMode = "timed";
-
-  function objectiveExamCounts(exam) {
-    return OBJECTIVE_EXAM_MODULES.reduce(function (sum, module) {
-      const result = exam.results && exam.results[module.key];
-      if (result && Number(result.total) > 0) {
-        sum.total += Number(result.total);
-        sum.correct += Number(result.correct);
-      }
-      return sum;
-    }, { total: 0, correct: 0 });
-  }
+  const OBJECTIVE_EXAM_MODULES = Exams.MODULES;
+  const objectiveExamCounts = Exams.counts;
+  const EXAM_VIEW_KEY = "supervisor-exam-view";
+  let examChartMode = localStorage.getItem(EXAM_VIEW_KEY) === "overtime" ? "overtime" : "timed";
+  let currentExams = [];
+  let reflectionEditingId = null;
+  let reflectionSaving = false;
+  let examSaving = false;
 
   // 病假日:这天她一打开页面,「东亚小孩」就解锁,当天的任务同时全部锁上——
   // 不给她"再学一点"的机会。判定和成就是同一个日子,改这里就够了
@@ -702,16 +689,11 @@
     $("#exam-chart-title").textContent = label;
     document.querySelectorAll("#exam-progress-filter [data-exam-view]").forEach(function (button) {
       button.classList.toggle("active", button.dataset.examView === examChartMode);
+      button.setAttribute("aria-pressed", String(button.dataset.examView === examChartMode));
     });
 
-    function isLegacy(exam) {
-      return !exam.results || typeof exam.results !== "object" || !Object.keys(exam.results).length;
-    }
-    const shown = exams.filter(function (exam) {
-      return exam.mode === examChartMode || (examChartMode === "timed" && isLegacy(exam));
-    });
-    const usable = shown.filter(exam => !isLegacy(exam) && objectiveExamCounts(exam).total > 0);
-    const errorTrend = usable.filter(exam => objectiveExamCounts(exam).total > 0);
+    const shown = exams.filter(exam => Exams.inMode(exam, examChartMode));
+    const usable = shown.filter(exam => objectiveExamCounts(exam).total > 0);
     const totals = usable.map(objectiveExamCounts);
     const latest = totals[totals.length - 1];
     const first = totals[0];
@@ -720,7 +702,7 @@
     const delta = $("#exam-progress-delta");
     delta.className = "";
     if (totals.length < 2) {
-      delta.textContent = totals.length ? "首次记录" : "待下次记录";
+      delta.textContent = totals.length ? "首次记录" : "—";
     } else {
       const diff = Math.round(latest.correct / latest.total * 100)
         - Math.round(first.correct / first.total * 100);
@@ -732,17 +714,97 @@
       ? totals.reduce((sum, result) => sum + result.total, 0) + " 题" : "—";
     $("#exam-progress-errors").textContent = latest ? String(latest.total - latest.correct) : "—";
 
-    const hasLegacyPoints = examChartMode === "timed" && shown.some(function (exam) {
-      return isLegacy(exam) && OBJECTIVE_EXAM_MODULES.some(module => exam[module.key] != null);
-    });
-    const hasData = usable.length > 0 || hasLegacyPoints;
-    $("#exam-chart-wrap").style.display = hasData ? "" : "none";
-    if (hasData) Charts.renderExamChart($("#exam-chart"), shown);
+    $("#exam-chart-wrap").hidden = shown.length === 0;
+    $("#exam-chart-empty").hidden = shown.length > 0;
+    Charts.renderExamChart($("#exam-chart"), shown);
 
     $("#exam-errors-chart-title").textContent = label + " · 五个客观板块合计";
-    $("#exam-errors-chart-wrap").hidden = errorTrend.length === 0;
-    $("#exam-errors-empty").hidden = errorTrend.length > 0;
-    if (errorTrend.length) Charts.renderExamWrongChart($("#exam-errors-chart"), errorTrend);
+    $("#exam-errors-chart-wrap").hidden = usable.length === 0;
+    $("#exam-errors-empty").hidden = usable.length > 0;
+    Charts.renderExamWrongChart($("#exam-errors-chart"), usable);
+  }
+
+  function renderExamTable(exams) {
+    const shown = exams.filter(exam => Exams.inMode(exam, examChartMode)).slice().reverse();
+    $("#exam-records-title").textContent = (examChartMode === "overtime" ? "超时补做" : "限时完成")
+      + " · " + shown.length + " 条 · 错误数 / 总题数";
+    const tbody = $("#exam-table tbody");
+    tbody.replaceChildren();
+    $("#exam-table-wrap").hidden = shown.length === 0;
+    $("#exam-empty").hidden = shown.length > 0;
+    for (const exam of shown) {
+      const tr = document.createElement("tr");
+      const dateCell = document.createElement("td");
+      dateCell.textContent = exam.date.replace(/-/g, "/");
+      if (Exams.isLegacy(exam)) {
+        const badge = document.createElement("span");
+        badge.className = "exam-legacy-tag";
+        badge.textContent = "旧记录";
+        dateCell.appendChild(badge);
+      }
+      tr.appendChild(dateCell);
+      const counts = objectiveExamCounts(exam);
+      const wrongCell = document.createElement("td");
+      wrongCell.className = "num exam-total-wrong";
+      wrongCell.textContent = counts.total ? counts.wrong : "—";
+      tr.appendChild(wrongCell);
+      OBJECTIVE_EXAM_MODULES.forEach(function (module) {
+        const cell = document.createElement("td");
+        cell.className = "num";
+        const result = Exams.result(exam, module.key);
+        const rate = Exams.accuracy(exam, module.key);
+        cell.textContent = result ? (result.total - result.correct) + "/" + result.total
+          : rate == null ? "—" : rate + "%";
+        if (!result && rate != null) cell.title = "历史正确率";
+        tr.appendChild(cell);
+      });
+      const notesCell = document.createElement("td");
+      notesCell.className = "exam-notes-cell";
+      notesCell.textContent = exam.notes || "—";
+      tr.appendChild(notesCell);
+      tbody.appendChild(tr);
+    }
+  }
+
+  function renderExamReflections(exams) {
+    const reflections = exams.filter(exam => typeof exam.shenlun_reflection === "string"
+      && exam.shenlun_reflection.trim()).slice().reverse();
+    const count = reflections.length + " 条";
+    $("#exam-reflections-count").textContent = count;
+    $("#exam-reflections-total").textContent = count;
+    $("#exam-reflections-empty").hidden = reflections.length > 0;
+    const list = $("#exam-reflection-list");
+    list.replaceChildren();
+    for (const exam of reflections) {
+      const item = document.createElement("li");
+      const header = document.createElement("div");
+      header.className = "exam-reflection-meta";
+      const date = document.createElement("time");
+      date.dateTime = exam.date;
+      date.textContent = exam.date.replace(/-/g, "/");
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "exam-secondary";
+      edit.textContent = "编辑";
+      edit.dataset.reflectionEdit = exam.id;
+      edit.setAttribute("aria-label", "编辑 " + exam.date + " 的申论感悟");
+      header.append(date, edit);
+      const title = document.createElement("h4");
+      title.textContent = exam.notes || "申论练习";
+      const text = document.createElement("p");
+      text.className = "exam-reflection-text";
+      text.textContent = exam.shenlun_reflection;
+      item.append(header, title, text);
+      list.appendChild(item);
+    }
+  }
+
+  function renderExams(exams) {
+    currentExams = exams;
+    renderExamProgress(exams);
+    renderExamTable(exams);
+    renderExamReflections(exams);
+    if (!$("#exam-form-date").value) $("#exam-form-date").value = todayHer();
   }
 
   // ---------- 渲染:学习轨迹 ----------
@@ -829,7 +891,7 @@
 
       // 超时补做是同一套模考的补充记录,不另算一套;旧格式记录仍按模考计数。
       examCount: exams.filter(function (exam) {
-        return exam.mode === "timed" || !exam.results || !Object.keys(exam.results).length;
+        return Exams.inMode(exam, "timed");
       }).length,
       bothDays: bothDays,
       dayMaxDone: Math.max(0, ...Object.values(doneByDate)),
@@ -930,69 +992,8 @@
     }
     if (!$("#drill-date").value) $("#drill-date").value = todayHer();
 
-    // 模考记录
-    renderExamProgress(exams);
-    const tbody = $("#exam-table tbody");
-    tbody.innerHTML = "";
-    $("#exam-empty").hidden = exams.length > 0;
-    for (const e of exams.slice().reverse()) {
-      const tr = document.createElement("tr");
-      const legacy = !e.results || typeof e.results !== "object" || !Object.keys(e.results).length;
-      const dateCell = document.createElement("td");
-      dateCell.textContent = fmtDate(e.date);
-      tr.appendChild(dateCell);
-
-      const modeCell = document.createElement("td");
-      const modeTag = document.createElement("span");
-      modeTag.className = "exam-mode-tag";
-      if (legacy) {
-        modeTag.textContent = "旧记录";
-      } else if (e.mode === "overtime") {
-        modeTag.textContent = "超时补做";
-        modeTag.classList.add("exam-mode-overtime");
-      } else {
-        modeTag.textContent = "限时完成";
-      }
-      modeCell.appendChild(modeTag);
-      tr.appendChild(modeCell);
-
-      const wrongCell = document.createElement("td");
-      wrongCell.className = "num";
-      if (legacy) {
-        wrongCell.textContent = "—";
-        wrongCell.title = "旧记录无法还原总错题数";
-      } else {
-        const objective = objectiveExamCounts(e);
-        wrongCell.textContent = String(objective.total - objective.correct);
-      }
-      tr.appendChild(wrongCell);
-
-      EXAM_MODULES.forEach(function (module) {
-        const cell = document.createElement("td");
-        if (module.key === "shenlun") {
-          cell.className = "exam-reflection-cell";
-          cell.textContent = e.shenlun_reflection || (e.shenlun == null ? "—" : "历史得分：" + e.shenlun + " 分");
-        } else if (legacy) {
-          cell.className = "num";
-          const oldValue = e[module.key];
-          cell.textContent = oldValue == null ? "—"
-            : oldValue + "%";
-          cell.title = "旧记录仅保存了百分比,无法还原题数";
-        } else {
-          cell.className = "num";
-          const result = e.results[module.key];
-          cell.textContent = result && Number(result.total) > 0
-            ? (Number(result.total) - Number(result.correct)) + "/" + Number(result.total) : "—";
-        }
-        tr.appendChild(cell);
-      });
-
-      const notesCell = document.createElement("td");
-      notesCell.textContent = e.notes || "";
-      tr.appendChild(notesCell);
-      tbody.appendChild(tr);
-    }
-    if (!$("#exam-form-date").value) $("#exam-form-date").value = todayHer();
+    // 模考与申论感悟分别展示。
+    renderExams(exams);
   }
 
   // ---------- 留言板新消息角标 ----------
@@ -1554,49 +1555,269 @@
     refresh();
   });
 
-  $("#exam-form").addEventListener("change", function (e) {
-    if (e.target.name !== "exam-mode") return;
-    document.querySelectorAll(".exam-total-label").forEach(function (label) {
-      label.textContent = e.target.value === "overtime" ? "补做题数" : "总题数";
+  function setExamStatus(selector, text, error) {
+    const element = $(selector);
+    element.textContent = text;
+    element.classList.toggle("is-error", !!error);
+  }
+
+  function setFormBusy(form, busy) {
+    form.setAttribute("aria-busy", String(busy));
+    for (const control of form.querySelectorAll("input, textarea, button")) {
+      if (busy) {
+        control.dataset.wasDisabled = String(control.disabled);
+        control.disabled = true;
+      } else {
+        control.disabled = control.dataset.wasDisabled === "true";
+        delete control.dataset.wasDisabled;
+      }
+    }
+  }
+
+  function examDraft() {
+    const results = {};
+    let total = 0, wrong = 0, filled = 0, valid = true;
+    const mode = $("#exam-form input[name='exam-mode']:checked").value;
+    document.querySelectorAll("#exam-form .exam-total-label").forEach(function (label) {
+      label.textContent = mode === "overtime" ? "补做题数" : "总题数";
     });
+    for (const section of document.querySelectorAll("#exam-form [data-exam-module]")) {
+      const totalInput = section.querySelector(".exam-total");
+      const wrongInput = section.querySelector(".exam-wrong");
+      const n = totalInput.value === "" && !totalInput.validity.badInput ? 0 : totalInput.valueAsNumber;
+      const w = wrongInput.value === "" && !wrongInput.validity.badInput ? 0 : wrongInput.valueAsNumber;
+      const totalValid = Number.isSafeInteger(n) && n >= 0;
+      const wrongValid = Number.isSafeInteger(w) && w >= 0;
+      totalInput.setCustomValidity(totalValid ? "" : "题数请填写不小于 0 的整数。");
+      wrongInput.setCustomValidity(!wrongValid ? "错误数请填写不小于 0 的整数。"
+        : totalValid && w > n ? "错误数不能超过本板块的题数。" : "");
+      if (!totalValid || !wrongValid || w > n) { valid = false; continue; }
+      results[section.dataset.examModule] = { total: n, correct: n - w };
+      total += n;
+      wrong += w;
+      if (n > 0) filled++;
+    }
+    $("#exam-draft-summary").textContent = !valid ? "请检查题数和错误数"
+      : total ? filled + " 个板块 · " + total + " 题 · 错 " + wrong + " 题 · 正确率 "
+        + Math.round((total - wrong) / total * 100) + "%" : "填写本次完成的题数和错误数";
+    return { results: results, total: total, mode: mode, valid: valid };
+  }
+
+  $("#exam-form").addEventListener("input", function () {
+    examDraft();
+    setExamStatus("#exam-form-status", "");
   });
+  $("#exam-form").addEventListener("change", examDraft);
+  examDraft();
 
   $("#exam-progress-filter").addEventListener("click", function (e) {
     const button = e.target.closest("[data-exam-view]");
     if (!button || button.dataset.examView === examChartMode) return;
     examChartMode = button.dataset.examView;
-    refresh();
+    try { localStorage.setItem(EXAM_VIEW_KEY, examChartMode); } catch (error) {}
+    renderExamProgress(currentExams);
+    renderExamTable(currentExams);
   });
 
   $("#exam-form").addEventListener("submit", async function (e) {
     e.preventDefault();
-    const results = {};
-    let totalQuestions = 0;
-    for (const section of document.querySelectorAll("[data-exam-module]")) {
-      const total = parseInt(section.querySelector(".exam-total").value, 10) || 0;
-      const wrong = parseInt(section.querySelector(".exam-wrong").value, 10) || 0;
-      if (wrong > total) {
-        alert(section.querySelector("h3").textContent + "的错误数不能超过题数。");
-        return;
-      }
-      const correct = total - wrong;
-      results[section.dataset.examModule] = { total: total, correct: correct };
-      totalQuestions += total;
-    }
-    if (!totalQuestions) {
-      alert("至少填写一个板块的总题数。");
+    if (examSaving) return;
+    const draft = examDraft();
+    if (!draft.valid || !this.reportValidity()) return;
+    if (!draft.total) {
+      setExamStatus("#exam-form-status", "请至少填写一个板块的题数。", true);
+      this.querySelector(".exam-total").focus();
       return;
     }
-    await Store.addExam({
-      date: $("#exam-form-date").value,
-      mode: $("#exam-form input[name='exam-mode']:checked").value,
-      results: results,
-      shenlun_reflection: $("#exam-shenlun-reflection").value.trim(),
-      notes: $("#exam-notes").value.trim(),
-    });
+    const record = { date: $("#exam-form-date").value, mode: draft.mode,
+      results: draft.results, notes: $("#exam-notes").value.trim() };
+    const button = this.querySelector("button[type='submit']");
+    examSaving = true;
+    setFormBusy(this, true);
+    button.textContent = "保存中…";
+    let saved = false;
+    try {
+      await Store.addExam(record);
+      saved = true;
+    } catch (error) {
+      setExamStatus("#exam-form-status", "保存失败，填写的内容已保留，请稍后重试。", true);
+    } finally {
+      examSaving = false;
+      setFormBusy(this, false);
+      button.textContent = "保存模考记录";
+    }
+    if (!saved) return;
     this.reset();
     $("#exam-form-date").value = todayHer();
-    refresh();
+    examDraft();
+    examChartMode = record.mode;
+    try { localStorage.setItem(EXAM_VIEW_KEY, examChartMode); } catch (error) {}
+    setExamStatus("#exam-form-status", "模考记录已保存。");
+    try { await refresh(); }
+    catch (error) { setExamStatus("#exam-form-status", "记录已保存，列表暂未更新，请刷新页面。", true); }
+  });
+
+  // 原生 dialog 负责焦点限制、Esc 关闭和关闭后的焦点恢复。
+  const reflectionDialog = $("#exam-reflections-dialog");
+  let reflectionInitialText = "";
+  let reflectionPendingAction = null;
+
+  function reflectionHasChanges() {
+    return $("#exam-shenlun-reflection").value.trim() !== reflectionInitialText.trim()
+      || (reflectionEditingId == null && !!$("#exam-reflection-notes").value.trim());
+  }
+
+  function clearReflectionSwitch() {
+    reflectionPendingAction = null;
+    $("#exam-reflection-draft-warning").hidden = true;
+  }
+
+  function requestReflectionSwitch(action) {
+    if (!reflectionHasChanges()) { action(); return; }
+    reflectionPendingAction = action;
+    $("#exam-reflection-draft-warning").hidden = false;
+    $("#exam-reflection-keep-draft").focus();
+  }
+
+  $("#exam-reflection-keep-draft").addEventListener("click", function () {
+    clearReflectionSwitch();
+    $("#exam-reflection-editor").open = true;
+    $("#exam-shenlun-reflection").focus();
+  });
+  $("#exam-reflection-discard-draft").addEventListener("click", function () {
+    const action = reflectionPendingAction;
+    clearReflectionSwitch();
+    if (action) action();
+  });
+
+  function reflectionLength() {
+    $("#exam-reflection-length").textContent = $("#exam-shenlun-reflection").value.length + " / 2000";
+  }
+
+  function resetReflectionEditor() {
+    clearReflectionSwitch();
+    reflectionEditingId = null;
+    reflectionInitialText = "";
+    $("#exam-reflection-form").reset();
+    $("#exam-reflection-date").value = todayHer();
+    $("#exam-reflection-date").disabled = false;
+    $("#exam-reflection-notes").disabled = false;
+    $("#exam-reflection-cancel").hidden = true;
+    $("#exam-reflection-editor-title").textContent = "写一条新感悟";
+    $("#exam-shenlun-reflection").setCustomValidity("");
+    setExamStatus("#exam-reflection-status", "");
+    reflectionLength();
+  }
+
+  function openReflections(compose) {
+    clearReflectionSwitch();
+    if (!reflectionSaving) setExamStatus("#exam-reflections-feedback", "");
+    if (!$("#exam-reflection-date").value) $("#exam-reflection-date").value = todayHer();
+    $("#exam-reflection-editor").open = compose;
+    if (!reflectionDialog.open) reflectionDialog.showModal();
+    document.body.classList.add("exam-dialog-open");
+    if (compose) $("#exam-shenlun-reflection").focus();
+    else $("#exam-reflections-close").focus();
+  }
+
+  $("#exam-reflection-new").addEventListener("click", function () {
+    if (reflectionEditingId != null) {
+      openReflections(true);
+      requestReflectionSwitch(function () { resetReflectionEditor(); openReflections(true); });
+      return;
+    }
+    openReflections(true);
+  });
+  $("#exam-reflections-open").addEventListener("click", function () { openReflections(false); });
+  $("#exam-reflections-close").addEventListener("click", function () { reflectionDialog.close(); });
+  reflectionDialog.addEventListener("close", function () { document.body.classList.remove("exam-dialog-open"); });
+  let backdropPress = false;
+  function outsideDialog(event) {
+    const rect = reflectionDialog.getBoundingClientRect();
+    return event.clientX < rect.left || event.clientX > rect.right
+      || event.clientY < rect.top || event.clientY > rect.bottom;
+  }
+  reflectionDialog.addEventListener("pointerdown", function (event) { backdropPress = outsideDialog(event); });
+  reflectionDialog.addEventListener("click", function (event) {
+    if (backdropPress && outsideDialog(event)) reflectionDialog.close();
+    backdropPress = false;
+  });
+  $("#exam-shenlun-reflection").addEventListener("input", function () {
+    this.setCustomValidity("");
+    reflectionLength();
+    setExamStatus("#exam-reflection-status", "");
+    setExamStatus("#exam-reflections-feedback", "");
+  });
+  $("#exam-reflection-cancel").addEventListener("click", function () {
+    resetReflectionEditor();
+    $("#exam-reflection-editor").open = false;
+    $("#exam-reflection-editor-title").focus();
+  });
+  $("#exam-reflection-list").addEventListener("click", function (event) {
+    const button = event.target.closest("[data-reflection-edit]");
+    if (!button || reflectionSaving) return;
+    const exam = currentExams.find(item => String(item.id) === button.dataset.reflectionEdit);
+    if (!exam) return;
+    if (reflectionEditingId === exam.id) {
+      $("#exam-reflection-editor").open = true;
+      $("#exam-shenlun-reflection").focus();
+      return;
+    }
+    requestReflectionSwitch(function () { editReflection(exam); });
+  });
+
+  function editReflection(exam) {
+    clearReflectionSwitch();
+    reflectionEditingId = exam.id;
+    reflectionInitialText = exam.shenlun_reflection;
+    $("#exam-reflection-date").value = exam.date;
+    $("#exam-reflection-notes").value = exam.notes || "";
+    // 只编辑感悟,避免改动原来模考的日期或套卷备注。
+    $("#exam-reflection-date").disabled = true;
+    $("#exam-reflection-notes").disabled = true;
+    $("#exam-shenlun-reflection").value = exam.shenlun_reflection;
+    $("#exam-shenlun-reflection").setCustomValidity("");
+    $("#exam-reflection-cancel").hidden = false;
+    $("#exam-reflection-editor-title").textContent = "编辑感悟";
+    $("#exam-reflection-editor").open = true;
+    setExamStatus("#exam-reflection-status", "");
+    setExamStatus("#exam-reflections-feedback", "");
+    reflectionLength();
+    $("#exam-shenlun-reflection").focus();
+  }
+
+  $("#exam-reflection-form").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (reflectionSaving) return;
+    const input = $("#exam-shenlun-reflection");
+    const text = input.value.trim();
+    input.setCustomValidity(text ? "" : "请写下这次练习的感悟。");
+    if (!this.reportValidity()) return;
+    const record = { date: $("#exam-reflection-date").value,
+      notes: $("#exam-reflection-notes").value.trim(), mode: "timed", results: {}, shenlun_reflection: text };
+    reflectionSaving = true;
+    setFormBusy(this, true);
+    const button = this.querySelector("button[type='submit']");
+    button.textContent = "保存中…";
+    let saved = false;
+    try {
+      if (reflectionEditingId != null) await Store.updateExamReflection(reflectionEditingId, text);
+      else await Store.addExam(record);
+      saved = true;
+    } catch (error) {
+      setExamStatus("#exam-reflection-status", "保存失败，感悟已保留，请稍后重试。", true);
+    } finally {
+      reflectionSaving = false;
+      setFormBusy(this, false);
+      button.textContent = "保存感悟";
+    }
+    if (!saved) return;
+    resetReflectionEditor();
+    $("#exam-reflection-editor").open = false;
+    setExamStatus("#exam-reflections-feedback", "感悟已保存。");
+    try { renderExams(await Store.listExams()); }
+    catch (error) { setExamStatus("#exam-reflections-feedback", "感悟已保存，列表暂未更新，请刷新页面。", true); }
+    $("#exam-reflection-editor-title").focus();
   });
 
   $("#board-form").addEventListener("submit", async function (e) {

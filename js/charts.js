@@ -56,6 +56,14 @@ window.Charts = (function () {
       for (let i = 1; i < labels.length; i++) {
         if (labels[i].y - labels[i - 1].y < 15) labels[i].y = labels[i - 1].y + 15;
       }
+      for (let i = labels.length - 1; i >= 0; i--) {
+        labels[i].y = Math.min(labels[i].y, i === labels.length - 1
+          ? chart.chartArea.bottom - 6 : labels[i + 1].y - 15);
+      }
+      if (labels.length && labels[0].y < chart.chartArea.top + 6) {
+        const shift = chart.chartArea.top + 6 - labels[0].y;
+        labels.forEach(label => { label.y += shift; });
+      }
       ctx.save();
       ctx.font = "11px system-ui, sans-serif";
       ctx.textBaseline = "middle";
@@ -151,34 +159,21 @@ window.Charts = (function () {
     });
   }
 
-  const EXAM_MODULES = [
-    { key: "changshi", label: "常识" },
-    { key: "yanyu", label: "言语" },
-    { key: "shuliang", label: "数量" },
-    { key: "panduan", label: "判断" },
-    { key: "ziliao", label: "资料" },
-  ];
+  const EXAM_MODULES = Exams.MODULES;
 
   // 模考走势按记录次数排列,限时与超时补做由页面分别筛选。
   function renderExamChart(canvas, exams) {
     if (examChart) examChart.destroy();
+    examChart = null;
     const c = ink();
     const colors = isDark() ? SERIES_DARK : SERIES_LIGHT;
-    function isLegacy(exam) {
-      return !exam.results || typeof exam.results !== "object" || !Object.keys(exam.results).length;
-    }
     function accuracy(exam, module) {
-      const result = exam.results && exam.results[module.key];
-      if (result && Number(result.total) > 0)
-        return Number(result.correct) / Number(result.total) * 100;
-      // 旧模考的五个客观板块本来就是百分比,可直接作为历史点展示。
-      if (isLegacy(exam) && exam[module.key] != null)
-        return Number(exam[module.key]);
-      return null;
+      return Exams.accuracy(exam, module.key);
     }
     const usable = exams.filter(function (exam) {
       return EXAM_MODULES.some(module => accuracy(exam, module) != null);
     });
+    if (!usable.length) return;
     const labels = usable.map(function (exam, i) {
       return exam.date.slice(5).replace("-", "/") + " · " + (i + 1);
     });
@@ -234,13 +229,17 @@ window.Charts = (function () {
           } : { display: false },
           tooltip: {
             callbacks: {
+              title: items => {
+                const exam = usable[items[0].dataIndex];
+                return exam.date + (exam.notes ? " · " + exam.notes : "");
+              },
               label: function (ctx) {
                 const exam = usable[ctx.dataIndex];
                 const module = EXAM_MODULES.find(m => m.label === ctx.dataset.label);
-                const result = exam.results && exam.results[module.key];
-                return result && Number(result.total) > 0
-                  ? " " + ctx.dataset.label + " " + result.correct + "/" + result.total
-                    + " · " + ctx.formattedValue + "%"
+                const result = Exams.result(exam, module.key);
+                return result
+                  ? " " + ctx.dataset.label + " " + ctx.formattedValue + "% · 错 "
+                    + (result.total - result.correct) + "/" + result.total + " 题"
                   : " " + ctx.dataset.label + " " + ctx.formattedValue + "% · 旧记录";
               },
             },
@@ -254,22 +253,19 @@ window.Charts = (function () {
   // 每次模考的总错题数:旧记录只有百分比,无法还原准确错题数,不纳入走势。
   function renderExamWrongChart(canvas, exams) {
     if (examWrongChart) examWrongChart.destroy();
+    examWrongChart = null;
     const c = ink();
     const color = isInk() ? "#b03a24" : isDark() ? "#e66767" : "#e34948";
-    const points = exams.map(function (exam, i) {
-      const wrong = ["changshi", "yanyu", "shuliang", "panduan", "ziliao"]
-        .reduce(function (sum, key) {
-          const result = exam.results && exam.results[key];
-          if (result && Number(result.total) > 0)
-            sum += Number(result.total) - Number(result.correct);
-          return sum;
-        }, 0);
+    const points = exams.filter(exam => Exams.counts(exam).total > 0).map(function (exam, i) {
+      const counts = Exams.counts(exam);
       return {
         label: exam.date.slice(5).replace("-", "/") + " · " + (i + 1),
-        wrong: wrong,
-        date: exam.date,
+        wrong: counts.wrong,
+        total: counts.total,
+        title: exam.date + (exam.notes ? " · " + exam.notes : ""),
       };
     });
+    if (!points.length) return;
 
     examWrongChart = new Chart(canvas, {
       type: "line",
@@ -284,7 +280,7 @@ window.Charts = (function () {
           pointRadius: 4,
           pointHoverRadius: 6,
           pointHitRadius: 12,
-          tension: 0.2,
+          tension: 0,
         }],
       },
       options: {
@@ -298,7 +294,7 @@ window.Charts = (function () {
             ticks: {
               color: c.muted,
               precision: 0,
-              callback: value => Number.isInteger(value) ? value : null,
+              callback: value => Number.isInteger(value) ? value + " 题" : null,
             },
             grid: { color: c.grid },
             border: { color: c.axis },
@@ -313,8 +309,8 @@ window.Charts = (function () {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              title: items => points[items[0].dataIndex].date,
-              label: ctx => " 总错题 " + ctx.formattedValue + " 题",
+              title: items => points[items[0].dataIndex].title,
+              label: ctx => " 总错题 " + ctx.formattedValue + " 题 · 本次 " + points[ctx.dataIndex].total + " 题",
             },
           },
         },

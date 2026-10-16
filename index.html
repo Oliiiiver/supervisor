@@ -7,8 +7,8 @@
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
 <script>/* 进页面先把上次选的风格穿上,避免闪一下白 */
 try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement.classList.add("theme-ink")}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=47">
-<link rel="stylesheet" href="css/theme-ink.css?v=47">
+<link rel="stylesheet" href="css/style.css?v=48">
+<link rel="stylesheet" href="css/theme-ink.css?v=48">
 </head>
 <body>
 
@@ -237,18 +237,20 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
   <section class="panel" id="tab-exams">
 
     <div class="card">
-      <h2>正确率走势 <span class="h2-note" id="exam-chart-title">限时完成</span></h2>
+      <h2>模考走势 <span class="h2-note" id="exam-chart-title">限时完成</span></h2>
       <div class="drill-filter" id="exam-progress-filter" aria-label="选择要查看的记录方式">
-        <button type="button" class="drill-chip active" data-exam-view="timed">限时完成</button>
-        <button type="button" class="drill-chip" data-exam-view="overtime">超时补做</button>
+        <button type="button" class="drill-chip active" data-exam-view="timed" aria-pressed="true">限时完成</button>
+        <button type="button" class="drill-chip" data-exam-view="overtime" aria-pressed="false">超时补做</button>
       </div>
       <div class="exam-progress-stats">
         <div class="exam-progress-stat"><span>最近综合正确率</span><strong id="exam-latest-rate">—</strong></div>
-        <div class="exam-progress-stat"><span>较首次题数记录</span><strong id="exam-progress-delta">—</strong></div>
+        <div class="exam-progress-stat"><span>较首次记录</span><strong id="exam-progress-delta">—</strong></div>
         <div class="exam-progress-stat"><span>累计记录题数</span><strong id="exam-progress-total">0</strong></div>
-        <div class="exam-progress-stat"><span>最近一场总错题</span><strong id="exam-progress-errors">—</strong></div>
+        <div class="exam-progress-stat"><span>最近一次总错题</span><strong id="exam-progress-errors">—</strong></div>
       </div>
+      <h3 class="exam-chart-heading">各板块正确率</h3>
       <div class="chart-wrap" id="exam-chart-wrap"><canvas id="exam-chart" aria-label="各板块正确率走势" role="img"></canvas></div>
+      <p class="empty-hint" id="exam-chart-empty" hidden>还没有这类客观题记录。</p>
       <div class="exam-error-trend">
         <div class="exam-trend-heading">
           <h3>每次总错题</h3>
@@ -257,19 +259,19 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
         <div class="chart-wrap exam-error-chart-wrap" id="exam-errors-chart-wrap" hidden>
           <canvas id="exam-errors-chart" aria-label="每次模考总错题数变化" role="img"></canvas>
         </div>
-        <p class="empty-hint" id="exam-errors-empty" hidden>从下一次模考记录开始显示总错题变化。</p>
+        <p class="empty-hint" id="exam-errors-empty" hidden>录入题数和错误数后查看走势。</p>
       </div>
     </div>
 
     <div class="card">
-      <h2>录入模考 <span class="h2-note">客观题记录题数和错误数，申论记录刷题感悟</span></h2>
+      <h2>录入模考 <span class="h2-note">客观题</span></h2>
       <form class="exam-form exam-record-form" id="exam-form">
         <div class="exam-record-meta">
           <label class="exam-field" for="exam-form-date">模考日期
             <input type="date" id="exam-form-date" required>
           </label>
           <label class="exam-field" for="exam-notes">套卷备注
-            <input type="text" id="exam-notes" placeholder="如:粉笔模考 12 期">
+            <input type="text" id="exam-notes" maxlength="200" placeholder="如:粉笔模考 12 期">
           </label>
         </div>
 
@@ -317,29 +319,38 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
               <label>错误数<input class="exam-wrong" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
             </div>
           </section>
-          <section class="exam-section">
-            <h3>申论</h3>
-            <label class="exam-reflection-field" for="exam-shenlun-reflection">刷题感悟
-              <textarea id="exam-shenlun-reflection" rows="3" maxlength="2000" placeholder="记录批改经验、常见问题或下一步改进方向"></textarea>
-            </label>
-          </section>
         </div>
 
-        <button type="submit">保存模考记录</button>
+        <div class="exam-form-footer">
+          <output id="exam-draft-summary">填写本次完成的题数和错误数</output>
+          <button type="submit">保存模考记录</button>
+        </div>
+        <p class="exam-form-status" id="exam-form-status" role="status" aria-live="polite"></p>
       </form>
     </div>
 
+    <div class="card exam-reflections-card">
+      <div>
+        <h2>申论感悟 <span class="h2-note" id="exam-reflections-count">0 条</span></h2>
+        <p>集中回看批改经验、答题问题和改进方法。</p>
+      </div>
+      <div class="exam-reflection-actions">
+        <button type="button" id="exam-reflection-new">写感悟</button>
+        <button type="button" class="exam-secondary" id="exam-reflections-open">查看感悟</button>
+      </div>
+    </div>
+
     <div class="card">
-      <h2>记录列表 <span class="h2-note">客观题错误数 / 总题数</span></h2>
-      <div class="exam-table-wrap">
+      <h2>记录列表 <span class="h2-note" id="exam-records-title">限时完成 · 错误数 / 总题数</span></h2>
+      <div class="exam-table-wrap" id="exam-table-wrap" role="region" aria-label="客观题记录，可横向滚动" tabindex="0">
         <table class="data-table exam-table" id="exam-table">
           <thead><tr>
-            <th>日期</th><th>方式</th><th class="num">总错题</th><th class="num">常识</th><th class="num">言语</th><th class="num">数量</th><th class="num">判断</th><th class="num">资料</th><th>申论感悟</th><th>备注</th>
+            <th scope="col">日期</th><th scope="col" class="num">总错题</th><th scope="col" class="num">常识</th><th scope="col" class="num">言语</th><th scope="col" class="num">数量</th><th scope="col" class="num">判断</th><th scope="col" class="num">资料</th><th scope="col">套卷备注</th>
           </tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <p class="empty-hint" id="exam-empty" hidden>还没有模考记录，先记下最近一次练习吧。</p>
+      <p class="empty-hint" id="exam-empty" hidden>还没有这类模考记录，先记下最近一次练习吧。</p>
     </div>
 
   </section>
@@ -364,6 +375,40 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
   </section>
 
 </main>
+
+<dialog class="exam-reflections-dialog" id="exam-reflections-dialog" aria-labelledby="exam-reflections-title">
+  <div class="exam-dialog-header">
+    <div><h2 id="exam-reflections-title">申论感悟</h2><p>把每次批改后的经验留在这里</p></div>
+    <button type="button" class="exam-dialog-close exam-secondary" id="exam-reflections-close" aria-label="关闭申论感悟">关闭</button>
+  </div>
+  <div class="exam-dialog-body">
+    <div class="exam-draft-warning" id="exam-reflection-draft-warning" role="alert" hidden>
+      <p>当前感悟尚未保存，切换后会放弃这份草稿。</p>
+      <div class="exam-reflection-actions">
+        <button type="button" id="exam-reflection-keep-draft">继续编辑</button>
+        <button type="button" class="exam-secondary" id="exam-reflection-discard-draft">放弃草稿并切换</button>
+      </div>
+    </div>
+    <details class="exam-reflection-editor" id="exam-reflection-editor">
+      <summary id="exam-reflection-editor-title">写一条新感悟</summary>
+      <form id="exam-reflection-form">
+        <div class="exam-record-meta">
+          <label class="exam-field" for="exam-reflection-date">练习日期<input id="exam-reflection-date" type="date" required></label>
+          <label class="exam-field" for="exam-reflection-notes">练习备注<input id="exam-reflection-notes" type="text" placeholder="套卷、题型或主题" maxlength="200"></label>
+        </div>
+        <label class="exam-reflection-field" for="exam-shenlun-reflection">刷题感悟
+          <textarea id="exam-shenlun-reflection" rows="6" maxlength="2000" required placeholder="记录批改经验、常见问题或下一步改进方向"></textarea>
+        </label>
+        <div class="exam-form-footer"><span id="exam-reflection-length">0 / 2000</span><div class="exam-reflection-actions"><button type="button" class="exam-secondary" id="exam-reflection-cancel" hidden>取消编辑</button><button type="submit">保存感悟</button></div></div>
+        <p class="exam-form-status" id="exam-reflection-status" role="status" aria-live="polite"></p>
+      </form>
+    </details>
+    <p class="exam-form-status" id="exam-reflections-feedback" role="status" aria-live="polite"></p>
+    <div class="exam-reflection-list-heading"><h3>感悟回顾</h3><span id="exam-reflections-total">0 条</span></div>
+    <ol class="exam-reflection-list" id="exam-reflection-list"></ol>
+    <p class="empty-hint" id="exam-reflections-empty">还没有感悟，记下第一次批改后的收获吧。</p>
+  </div>
+</dialog>
 
 <!-- 宝箱与兑奖券:累计积分每满 1500,点"历史总积分"弹出 -->
 <div class="chest-overlay" id="chest-overlay" hidden>
@@ -414,15 +459,16 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=47"></script>
-<script src="js/demo-data.js?v=47"></script>
-<script src="js/store.js?v=47"></script>
-<script src="js/charts.js?v=47"></script>
-<script src="js/badges.js?v=47"></script>
-<script src="js/badges-ink.js?v=47"></script>
+<script src="js/config.js?v=48"></script>
+<script src="js/demo-data.js?v=48"></script>
+<script src="js/store.js?v=48"></script>
+<script src="js/exams.js?v=48"></script>
+<script src="js/charts.js?v=48"></script>
+<script src="js/badges.js?v=48"></script>
+<script src="js/badges-ink.js?v=48"></script>
 
-<script src="js/juice.js?v=47"></script>
-<script src="js/pomodoro.js?v=47"></script>
-<script src="js/app.js?v=47"></script>
+<script src="js/juice.js?v=48"></script>
+<script src="js/pomodoro.js?v=48"></script>
+<script src="js/app.js?v=48"></script>
 </body>
 </html>

@@ -16,11 +16,11 @@ window.Store = (function () {
     return cache.seq[name]++;
   }
 
-  async function sb(promise) {
+  async function sb(promise, quiet) {
     const { data, error } = await promise;
     if (error) {
       console.error(error);
-      alert("云端操作失败:" + error.message);
+      if (!quiet) alert("云端操作失败:" + error.message);
       throw error;
     }
     return data;
@@ -305,10 +305,26 @@ window.Store = (function () {
 
     async addExam(e) {
       if (mode === "local") {
+        const sequence = cache.seq.exam;
         cache.exams.push(Object.assign({ id: nextId("exam") }, e));
-        return save();
+        try { return save(); }
+        catch (error) { cache.exams.pop(); cache.seq.exam = sequence; throw error; }
       }
-      await sb(db.from("mock_exams").insert(e));
+      await sb(db.from("mock_exams").insert(e), true);
+    },
+
+    async updateExamReflection(id, text) {
+      if (mode === "local") {
+        const exam = cache.exams.find(item => item.id === id);
+        if (!exam) throw new Error("这条感悟已不存在，请刷新后重试。");
+        const previous = exam.shenlun_reflection;
+        exam.shenlun_reflection = text;
+        try { return save(); }
+        catch (error) { exam.shenlun_reflection = previous; throw error; }
+      }
+      const rows = await sb(db.from("mock_exams").update({ shenlun_reflection: text })
+        .eq("id", id).select("id"), true);
+      if (!rows.length) throw new Error("这条感悟已不存在，请刷新后重试。");
     },
 
     // ---------- 留言板 ----------
