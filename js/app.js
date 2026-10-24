@@ -718,7 +718,7 @@
     $("#exam-chart-empty").hidden = shown.length > 0;
     Charts.renderExamChart($("#exam-chart"), shown);
 
-    $("#exam-errors-chart-title").textContent = label + " · 五个客观板块合计";
+    $("#exam-errors-chart-title").textContent = label + " · 客观板块合计";
     $("#exam-errors-chart-wrap").hidden = usable.length === 0;
     $("#exam-errors-empty").hidden = usable.length > 0;
     Charts.renderExamWrongChart($("#exam-errors-chart"), usable);

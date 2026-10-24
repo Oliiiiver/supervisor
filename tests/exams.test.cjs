@@ -35,6 +35,21 @@ test("独立感悟与申论旧分数不算客观题模考", () => {
   }
 });
 
+test("政治计入总题数与总错题数,缺少政治的历史记录保持原统计", () => {
+  const exams = domain();
+  const record = { mode: "timed", results: { zhengzhi: { total: 20, correct: 16 },
+    changshi: { total: 10, correct: 8 } } };
+  assert.equal(exams.MODULES[0].key, "zhengzhi");
+  assert.equal(exams.counts(record).total, 30);
+  assert.equal(exams.counts(record).wrong, 6);
+  assert.equal(exams.accuracy(record, "zhengzhi"), 80);
+  assert.equal(exams.inMode({ mode: "overtime", results: { zhengzhi: { total: 5, correct: 3 } } }, "overtime"), true);
+  const older = { results: { changshi: { total: 10, correct: 8 } } };
+  assert.equal(exams.accuracy(older, "zhengzhi"), null);
+  assert.equal(exams.counts(older).total, 10);
+  assert.equal(exams.counts(older).wrong, 2);
+});
+
 test("历史百分比保留零分点,不能还原为错题数", () => {
   const exams = domain();
   const record = { changshi: 0, yanyu: 75, shenlun: 90, results: {} };
@@ -75,15 +90,19 @@ test("错题图只含可还原的题数记录,切换空数据时销毁旧图", (
   context.Exams = context.window.Exams;
   load(context, "charts.js");
   const records = [{ date: "2026-10-01", changshi: 65, results: {} },
-    { date: "2026-10-02", results: { changshi: { total: 20, correct: 16 } } },
+    { date: "2026-10-02", results: { zhengzhi: { total: 20, correct: 17 }, changshi: { total: 20, correct: 16 } } },
     { date: "2026-10-03", results: {}, shenlun_reflection: "感悟" }];
   context.window.Charts.renderExamWrongChart({}, records);
-  assert.deepEqual(Array.from(created[0].config.data.datasets[0].data), [4]);
+  assert.deepEqual(Array.from(created[0].config.data.datasets[0].data), [7]);
   context.window.Charts.renderExamWrongChart({}, []);
   assert.equal(created[0].destroyed, true);
   assert.equal(created.length, 1);
   context.window.Charts.renderExamChart({}, records);
-  assert.deepEqual(Array.from(created[1].config.data.datasets[0].data), [65, 80]);
+  const datasets = created[1].config.data.datasets;
+  assert.deepEqual(Array.from(datasets.find(item => item.label === "常识").data), [65, 80]);
+  assert.deepEqual(Array.from(datasets.find(item => item.label === "政治").data), [null, 85]);
+  assert.notEqual(datasets.find(item => item.label === "政治").borderColor,
+    datasets.find(item => item.label === "常识").borderColor);
   context.window.Charts.renderExamChart({}, []);
   assert.equal(created[1].destroyed, true);
 });

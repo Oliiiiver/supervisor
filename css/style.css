@@ -974,7 +974,7 @@ button:disabled {
   accent-color: var(--accent);
 }
 
-.exam-section-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.exam-section-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 
 .exam-section {
   border: 1px solid var(--hairline);
@@ -1011,7 +1011,7 @@ button:disabled {
 .exam-progress-stat strong.delta-flat { color: var(--ink-2); }
 
 .exam-table-wrap { overflow-x: auto; scrollbar-width: thin; }
-.exam-table { min-width: 680px; }
+.exam-table { min-width: 740px; }
 .exam-table th, .exam-table td { white-space: nowrap; }
 .exam-table th.num, .exam-table td.num { text-align: right; }
 .exam-table td.num { font-variant-numeric: tabular-nums; }
@@ -1319,10 +1319,6 @@ body.exam-dialog-open { overflow: hidden; }
   .site-header { flex-wrap: wrap; gap: 12px 24px; }
   .tabs { flex-wrap: wrap; }
   .header-right { margin-left: 0; }
-}
-
-@media (min-width: 721px) and (max-width: 960px) {
-  .exam-section-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {

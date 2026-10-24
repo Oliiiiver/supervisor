@@ -1,6 +1,7 @@
 // 模考数据口径:客观题统计与申论感悟各自展示,共用已有记录表保存。
 window.Exams = (function () {
   const MODULES = [
+    { key: "zhengzhi", label: "政治" },
     { key: "changshi", label: "常识" },
     { key: "yanyu", label: "言语" },
     { key: "shuliang", label: "数量" },

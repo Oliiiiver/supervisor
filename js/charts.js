@@ -160,6 +160,8 @@ window.Charts = (function () {
   }
 
   const EXAM_MODULES = Exams.MODULES;
+  // 增加板块时保持已有曲线的颜色,政治使用独立的第六槽。
+  const EXAM_COLOR_INDEX = { zhengzhi: 5, changshi: 0, yanyu: 1, shuliang: 2, panduan: 3, ziliao: 4 };
 
   // 模考走势按记录次数排列,限时与超时补做由页面分别筛选。
   function renderExamChart(canvas, exams) {
@@ -177,7 +179,7 @@ window.Charts = (function () {
     const labels = usable.map(function (exam, i) {
       return exam.date.slice(5).replace("-", "/") + " · " + (i + 1);
     });
-    const datasets = EXAM_MODULES.map(function (module, i) {
+    const datasets = EXAM_MODULES.map(function (module) {
       const hasResults = usable.some(function (exam) {
         return accuracy(exam, module) != null;
       });
@@ -188,8 +190,8 @@ window.Charts = (function () {
           const value = accuracy(exam, module);
           return value == null ? null : Math.round(value);
         }),
-        borderColor: colors[i],
-        backgroundColor: colors[i],
+        borderColor: colors[EXAM_COLOR_INDEX[module.key]],
+        backgroundColor: colors[EXAM_COLOR_INDEX[module.key]],
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 5,
