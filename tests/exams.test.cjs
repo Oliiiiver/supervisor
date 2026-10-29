@@ -199,6 +199,59 @@ test("云端修改和删除锁定编号,未命中和服务失败不能报告成�
   await assert.rejects(store.updateExam(17, { notes: "更新" }), /offline/);
 });
 
+test("模考操作嵌入日期格左侧,仅监督员可见,不增加表格列", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "js", "app.js"), "utf8");
+  const elements = new Map();
+  function element() {
+    return { children: [], dataset: {}, attributes: {}, textContent: "",
+      appendChild(child) { this.children.push(child); },
+      prepend(child) { this.children.unshift(child); },
+      replaceChildren() { this.children = []; },
+      setAttribute(key, value) { this.attributes[key] = value; } };
+  }
+  const $ = key => { if (!elements.has(key)) elements.set(key, element()); return elements.get(key); };
+  let supervisor = false;
+  const Exams = domain();
+  const context = { $, document: { createElement: element }, isSup: () => supervisor,
+    Exams, OBJECTIVE_EXAM_MODULES: Exams.MODULES, objectiveExamCounts: Exams.counts, examChartMode: "timed" };
+  const start = source.indexOf("  function renderExamTable(exams) {");
+  const end = source.indexOf("  function renderExamReflections(exams) {", start);
+  vm.runInNewContext(source.slice(start, end), context);
+  const rows = [{ id: 17, date: "2026-10-29", results: { ziliao: { total: 20, correct: 17 } } }];
+  context.renderExamTable(rows);
+  let cells = $("#exam-table tbody").children[0].children;
+  assert.equal(cells.length, 9);
+  assert.equal(cells[0].children.length, 0);
+  supervisor = true;
+  context.renderExamTable(rows);
+  cells = $("#exam-table tbody").children[0].children;
+  assert.equal(cells.length, 9);
+  const buttons = cells[0].children[0].children;
+  assert.equal(buttons[0].textContent, "×");
+  assert.equal(buttons[0].dataset.examAction, "delete");
+  assert.equal(buttons[1].textContent, "✎");
+  assert.match(buttons[1].attributes["aria-label"], /修改/);
+  supervisor = false;
+  context.renderExamTable(rows);
+  assert.equal($("#exam-table tbody").children[0].children[0].children.length, 0);
+});
+
+test("普通模式不能打开管理弹窗或提交此前打开的修改和删除", async () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "js", "app.js"), "utf8");
+  const elements = new Map();
+  const $ = key => {
+    if (!elements.has(key)) elements.set(key, { handlers: {},
+      addEventListener(name, handler) { this.handlers[name] = handler; } });
+    return elements.get(key);
+  };
+  const start = source.indexOf('  const examManageDialog = $("#exam-manage-dialog");');
+  const end = source.indexOf("  // 原生 dialog", start);
+  vm.runInNewContext(source.slice(start, end), { $, isSup: () => false });
+  // 若未被入口拦截，读取事件目标或访问 Store 会直接报错。
+  $("#exam-table").handlers.click({});
+  await $("#exam-manage-form").handlers.submit({ preventDefault() {} });
+});
+
 test("感悟切换先保护草稿,继续编辑不丢内容,确认放弃后才切换", () => {
   // 直接运行实际事件绑定,独立于整页启动和浏览器原生确认框。
   const source = fs.readFileSync(path.join(__dirname, "..", "js", "app.js"), "utf8");

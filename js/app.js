@@ -75,6 +75,8 @@
   document.body.classList.toggle("supervisor", supToggle.checked);
   supToggle.addEventListener("change", function () {
     document.body.classList.toggle("supervisor", supToggle.checked);
+    if (!isSup() && examManageDialog.open && !examManageSaving) examManageDialog.close();
+    renderExamTable(currentExams);
     localStorage.setItem("supervisor-mode", supToggle.checked ? "1" : "0");
     refresh();
   });
@@ -762,19 +764,20 @@
       notesCell.className = "exam-notes-cell";
       notesCell.textContent = exam.notes || "—";
       tr.appendChild(notesCell);
-      const actions = document.createElement("td");
+      const actions = document.createElement("span");
       actions.className = "exam-row-actions";
-      for (const [action, label] of [["edit", "修改"], ["delete", "删除"]]) {
+      for (const [action, label, icon] of [["delete", "删除", "×"], ["edit", "修改", "✎"]]) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "exam-secondary";
-        button.textContent = label;
+        button.textContent = icon;
+        button.title = label;
         button.dataset.examAction = action;
         button.dataset.examId = exam.id;
         button.setAttribute("aria-label", label + " " + exam.date + " " + (exam.notes || "模考记录"));
         actions.appendChild(button);
       }
-      tr.appendChild(actions);
+      if (isSup()) dateCell.prepend(actions);
       tbody.appendChild(tr);
     }
   }
@@ -1676,6 +1679,7 @@
   let managedExam = null, examManageAction = null, examManageSaving = false;
 
   $("#exam-table").addEventListener("click", function (event) {
+    if (!isSup()) return;
     const button = event.target.closest("[data-exam-action]");
     if (!button) return;
     managedExam = currentExams.find(exam => String(exam.id) === button.dataset.examId);
@@ -1745,7 +1749,7 @@
   });
   examManageForm.addEventListener("submit", async function (event) {
     event.preventDefault();
-    if (examManageSaving || !managedExam) return;
+    if (!isSup() || examManageSaving || !managedExam) return;
     const deleting = examManageAction === "delete";
     const patch = { date: $("#exam-edit-date").value, notes: $("#exam-edit-notes").value.trim(),
       mode: $("#exam-edit-mode").value };

@@ -1027,8 +1027,9 @@ button:disabled {
 button.exam-secondary { background: transparent; color: var(--ink-2); border: 1px solid var(--hairline); }
 button.exam-secondary:hover { border-color: var(--accent); color: var(--accent); background: var(--neutral); }
 
-.exam-row-actions { white-space: nowrap; }
-.exam-row-actions button { padding: 6px 10px; margin: 2px; }
+.exam-row-actions { display: none; white-space: nowrap; vertical-align: middle; margin-right: 8px; }
+body.supervisor .exam-row-actions { display: inline-flex; gap: 2px; }
+.exam-row-actions button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 32px; padding: 0; font-size: 20px; line-height: 1; border-color: transparent; }
 #exam-manage-form { display: block; }
 #exam-edit-modules { margin-top: 16px; }
 #exam-edit-modules .exam-field { margin-top: 8px; }
