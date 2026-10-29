@@ -762,6 +762,19 @@
       notesCell.className = "exam-notes-cell";
       notesCell.textContent = exam.notes || "—";
       tr.appendChild(notesCell);
+      const actions = document.createElement("td");
+      actions.className = "exam-row-actions";
+      for (const [action, label] of [["edit", "修改"], ["delete", "删除"]]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "exam-secondary";
+        button.textContent = label;
+        button.dataset.examAction = action;
+        button.dataset.examId = exam.id;
+        button.setAttribute("aria-label", label + " " + exam.date + " " + (exam.notes || "模考记录"));
+        actions.appendChild(button);
+      }
+      tr.appendChild(actions);
       tbody.appendChild(tr);
     }
   }
@@ -1655,6 +1668,142 @@
     setExamStatus("#exam-form-status", "模考记录已保存。");
     try { await refresh(); }
     catch (error) { setExamStatus("#exam-form-status", "记录已保存，列表暂未更新，请刷新页面。", true); }
+  });
+
+  // 独立编辑弹窗不覆盖新增记录表单中的草稿。
+  const examManageDialog = $("#exam-manage-dialog");
+  const examManageForm = $("#exam-manage-form");
+  let managedExam = null, examManageAction = null, examManageSaving = false;
+
+  $("#exam-table").addEventListener("click", function (event) {
+    const button = event.target.closest("[data-exam-action]");
+    if (!button) return;
+    managedExam = currentExams.find(exam => String(exam.id) === button.dataset.examId);
+    if (!managedExam) return;
+    examManageAction = button.dataset.examAction;
+    const deleting = examManageAction === "delete";
+    const legacy = Exams.isLegacy(managedExam);
+    $("#exam-manage-title").textContent = deleting ? "删除模考记录" : "修改模考记录";
+    $("#exam-manage-submit").textContent = deleting ? "确认删除" : "保存修改";
+    $("#exam-manage-fields").hidden = deleting;
+    $("#exam-manage-delete-warning").hidden = !deleting;
+    const counts = Exams.counts(managedExam);
+    $("#exam-manage-description").textContent = managedExam.date + " · "
+      + (managedExam.mode === "overtime" ? "超时补做" : "限时完成") + " · "
+      + (managedExam.notes || "未填写套卷备注")
+      + (counts.total ? " · 总错题 " + counts.wrong + " 题" : " · 历史正确率记录");
+    $("#exam-manage-delete-warning").textContent = "删除后无法恢复。"
+      + (managedExam.shenlun_reflection ? "这条记录关联的申论感悟会一起删除。" : "");
+    $("#exam-edit-date").value = managedExam.date;
+    $("#exam-edit-notes").value = managedExam.notes || "";
+    $("#exam-edit-mode").value = managedExam.mode === "overtime" ? "overtime" : "timed";
+    const fields = $("#exam-edit-modules");
+    fields.replaceChildren();
+    for (const module of OBJECTIVE_EXAM_MODULES) {
+      // 历史百分比无法还原题数，按原有字段编辑，避免捏造错题数。
+      if (legacy && module.key === "zhengzhi") continue;
+      const section = document.createElement("section");
+      section.className = "exam-section";
+      section.dataset.module = module.key;
+      const title = document.createElement("h3");
+      title.textContent = module.label;
+      section.appendChild(title);
+      const result = Exams.result(managedExam, module.key);
+      const entries = legacy ? [["rate", "正确率（%）", Exams.accuracy(managedExam, module.key)]]
+        : [["total", "题数", result ? result.total : 0], ["wrong", "错误数", result ? result.total - result.correct : 0]];
+      for (const [key, label, value] of entries) {
+        const field = document.createElement("label");
+        field.className = "exam-field";
+        field.textContent = label;
+        const input = document.createElement("input");
+        input.type = "number"; input.min = "0"; input.step = "1";
+        input.inputMode = "numeric";
+        input.dataset.field = key;
+        if (key === "rate") input.max = "100";
+        input.value = value == null ? "" : value;
+        field.appendChild(input);
+        section.appendChild(field);
+      }
+      fields.appendChild(section);
+    }
+    setExamStatus("#exam-manage-status", "");
+    examManageDialog.showModal();
+    document.body.classList.add("exam-dialog-open");
+  });
+  $("#exam-manage-close").addEventListener("click", function () {
+    if (!examManageSaving) examManageDialog.close();
+  });
+  examManageDialog.addEventListener("cancel", function (event) {
+    if (examManageSaving) event.preventDefault();
+  });
+  examManageDialog.addEventListener("close", function () {
+    document.body.classList.remove("exam-dialog-open");
+  });
+  examManageForm.addEventListener("input", function () {
+    for (const input of this.querySelectorAll("input")) input.setCustomValidity("");
+    setExamStatus("#exam-manage-status", "");
+  });
+  examManageForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (examManageSaving || !managedExam) return;
+    const deleting = examManageAction === "delete";
+    const patch = { date: $("#exam-edit-date").value, notes: $("#exam-edit-notes").value.trim(),
+      mode: $("#exam-edit-mode").value };
+    if (!deleting) {
+      const legacy = Exams.isLegacy(managedExam);
+      if (!legacy) patch.results = {};
+      let total = 0, rates = 0;
+      for (const section of $("#exam-edit-modules").children) {
+        const values = {};
+        for (const input of section.querySelectorAll("input")) {
+          const value = input.value === "" && !input.validity.badInput ? (legacy ? null : 0) : input.valueAsNumber;
+          input.setCustomValidity(value === null || (Number.isSafeInteger(value) && value >= 0)
+            ? "" : "请填写不小于 0 的整数。");
+          values[input.dataset.field] = value;
+        }
+        if (legacy) { patch[section.dataset.module] = values.rate; if (values.rate != null) rates++; }
+        else {
+          section.querySelector('[data-field="wrong"]').setCustomValidity(
+            !Number.isSafeInteger(values.wrong) || values.wrong < 0 ? "请填写不小于 0 的整数。"
+              : values.wrong > values.total ? "错误数不能超过题数。" : "");
+          patch.results[section.dataset.module] = { total: values.total, correct: values.total - values.wrong };
+          total += values.total;
+        }
+      }
+      if (!this.reportValidity()) return;
+      if (legacy ? !rates : !total) {
+        setExamStatus("#exam-manage-status", "请至少保留一个板块的数据。", true); return;
+      }
+    }
+    examManageSaving = true;
+    setFormBusy(this, true);
+    $("#exam-edit-mode").disabled = true;
+    $("#exam-manage-close").disabled = true;
+    $("#exam-manage-submit").textContent = deleting ? "删除中…" : "保存中…";
+    try {
+      if (deleting) await Store.deleteExam(managedExam.id);
+      else await Store.updateExam(managedExam.id, patch);
+    } catch (error) {
+      setExamStatus("#exam-manage-status", deleting ? "删除失败，请稍后重试。" : "保存失败，修改内容已保留，请重试。", true);
+      return;
+    } finally {
+      examManageSaving = false;
+      setFormBusy(this, false);
+      $("#exam-edit-mode").disabled = false;
+      $("#exam-manage-close").disabled = false;
+      $("#exam-manage-submit").textContent = deleting ? "确认删除" : "保存修改";
+    }
+    if (!deleting) {
+      examChartMode = patch.mode;
+      try { localStorage.setItem(EXAM_VIEW_KEY, examChartMode); } catch (error) {}
+    }
+    // 先更新当前视图，刷新失败也不会留下已经删除或修改的旧记录。
+    renderExams(deleting ? currentExams.filter(exam => exam.id !== managedExam.id)
+      : currentExams.map(exam => exam.id === managedExam.id ? Object.assign({}, exam, patch) : exam));
+    examManageDialog.close();
+    setExamStatus("#exam-records-status", deleting ? "记录已删除。" : "修改已保存。");
+    try { await refresh(); }
+    catch (error) { setExamStatus("#exam-records-status", "操作已保存，其他统计暂未刷新，请稍后刷新页面。", true); }
   });
 
   // 原生 dialog 负责焦点限制、Esc 关闭和关闭后的焦点恢复。

@@ -134,6 +134,71 @@ test("本地保存失败会回滚,重试只新增一条;编辑只更新感悟", 
   assert.equal((await store.listExams()).length, 1);
 });
 
+test("修改和删除只影响指定模考;失败回滚,修改保留感悟与编号", async () => {
+  let fail = false;
+  const context = { window: {}, localStorage: { getItem: () => null,
+    setItem: () => { if (fail) throw new Error("storage full"); } } };
+  load(context, "demo-data.js"); load(context, "store.js");
+  const store = context.window.Store;
+  await store.init();
+  await store.addExam({ date: "2026-10-29", mode: "timed", notes: "原备注",
+    results: { ziliao: { total: 20, correct: 3 } }, shenlun_reflection: "保留感悟" });
+  await store.addExam({ date: "2026-10-29", mode: "overtime", results: { ziliao: { total: 1, correct: 1 } } });
+  const patch = { results: { ziliao: { total: 20, correct: 17 } }, notes: "修改后",
+    id: 999, shenlun_reflection: "不允许覆盖" };
+  fail = true;
+  await assert.rejects(store.updateExam(1, patch), /storage full/);
+  assert.equal((await store.listExams())[0].results.ziliao.correct, 3);
+  fail = false;
+  await store.updateExam(1, patch);
+  const edited = (await store.listExams())[0];
+  assert.equal(edited.id, 1);
+  assert.equal(edited.shenlun_reflection, "保留感悟");
+  assert.equal(edited.notes, "修改后");
+  assert.equal(domain().counts(edited).wrong, 3);
+  fail = true;
+  await assert.rejects(store.deleteExam(1), /storage full/);
+  assert.equal((await store.listExams())[0], edited);
+  fail = false;
+  await store.deleteExam(1);
+  const remaining = await store.listExams();
+  assert.equal(remaining.length, 1);
+  assert.equal(remaining[0].id, 2);
+  assert.equal(remaining[0].mode, "overtime");
+  await assert.rejects(store.deleteExam(1), /已不存在/);
+  await assert.rejects(store.updateExam(1, patch), /已不存在/);
+});
+
+test("云端修改和删除锁定编号,未命中和服务失败不能报告成功", async () => {
+  let response = { data: [{ id: 17 }], error: null };
+  const calls = [];
+  const query = {
+    update(patch) { calls.push(["update", patch]); return this; },
+    delete() { calls.push(["delete"]); return this; },
+    eq(key, value) { calls.push(["eq", key, value]); return this; },
+    select(key) { calls.push(["select", key]); return Promise.resolve(response); },
+  };
+  const context = { console: { error() {} }, window: { CONFIG: { SUPABASE_URL: "test", SUPABASE_ANON_KEY: "test" },
+    supabase: { createClient: () => ({ from: table => { assert.equal(table, "mock_exams"); return query; } }) } },
+    localStorage: { getItem: () => null } };
+  load(context, "store.js");
+  const store = context.window.Store; await store.init();
+  await store.updateExam(17, { notes: "更新", id: 18, shenlun_reflection: "不能覆盖" });
+  assert.equal(calls[0][1].notes, "更新");
+  assert.equal(calls[0][1].id, undefined);
+  assert.equal(calls[0][1].shenlun_reflection, undefined);
+  assert.deepEqual(calls[1], ["eq", "id", 17]);
+  calls.length = 0;
+  await store.deleteExam(17);
+  assert.deepEqual(calls, [["delete"], ["eq", "id", 17], ["select", "id"]]);
+  response = { data: [], error: null };
+  await assert.rejects(store.deleteExam(17), /已不存在/);
+  await assert.rejects(store.updateExam(17, { notes: "更新" }), /已不存在/);
+  response = { data: null, error: new Error("offline") };
+  await assert.rejects(store.deleteExam(17), /offline/);
+  await assert.rejects(store.updateExam(17, { notes: "更新" }), /offline/);
+});
+
 test("感悟切换先保护草稿,继续编辑不丢内容,确认放弃后才切换", () => {
   // 直接运行实际事件绑定,独立于整页启动和浏览器原生确认框。
   const source = fs.readFileSync(path.join(__dirname, "..", "js", "app.js"), "utf8");

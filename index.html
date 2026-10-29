@@ -7,8 +7,8 @@
 <!-- ?v= 是缓存戳:每次改动 js/css 一起发布时 +1,避免新旧文件混搭 -->
 <script>/* 进页面先把上次选的风格穿上,避免闪一下白 */
 try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement.classList.add("theme-ink")}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=49">
-<link rel="stylesheet" href="css/theme-ink.css?v=49">
+<link rel="stylesheet" href="css/style.css?v=50">
+<link rel="stylesheet" href="css/theme-ink.css?v=50">
 </head>
 <body>
 
@@ -352,11 +352,12 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
       <div class="exam-table-wrap" id="exam-table-wrap" role="region" aria-label="客观题记录，可横向滚动" tabindex="0">
         <table class="data-table exam-table" id="exam-table">
           <thead><tr>
-            <th scope="col">日期</th><th scope="col" class="num">总错题</th><th scope="col" class="num">政治</th><th scope="col" class="num">常识</th><th scope="col" class="num">言语</th><th scope="col" class="num">数量</th><th scope="col" class="num">判断</th><th scope="col" class="num">资料</th><th scope="col">套卷备注</th>
+            <th scope="col">日期</th><th scope="col" class="num">总错题</th><th scope="col" class="num">政治</th><th scope="col" class="num">常识</th><th scope="col" class="num">言语</th><th scope="col" class="num">数量</th><th scope="col" class="num">判断</th><th scope="col" class="num">资料</th><th scope="col">套卷备注</th><th scope="col">操作</th>
           </tr></thead>
           <tbody></tbody>
         </table>
       </div>
+      <p id="exam-records-status" class="exam-form-status" role="status" aria-live="polite"></p>
       <p class="empty-hint" id="exam-empty" hidden>还没有这类模考记录，先记下最近一次练习吧。</p>
     </div>
 
@@ -465,17 +466,38 @@ try{if(localStorage.getItem("supervisor-theme")==="ink")document.documentElement
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+<dialog id="exam-manage-dialog" class="exam-reflections-dialog" aria-labelledby="exam-manage-title" aria-describedby="exam-manage-description">
+  <header class="exam-dialog-header">
+    <div><h2 id="exam-manage-title">修改模考记录</h2><p id="exam-manage-description"></p></div>
+    <button type="button" id="exam-manage-close" class="exam-secondary exam-dialog-close">关闭</button>
+  </header>
+  <div class="exam-dialog-body">
+    <form id="exam-manage-form" class="exam-form" novalidate>
+      <div id="exam-manage-fields">
+        <div class="exam-record-meta">
+          <label class="exam-field">日期<input type="date" id="exam-edit-date" required></label>
+          <label class="exam-field">套卷备注<input id="exam-edit-notes" maxlength="200"></label>
+          <label class="exam-field">记录方式<select id="exam-edit-mode"><option value="timed">限时完成</option><option value="overtime">超时补做</option></select></label>
+        </div>
+        <div id="exam-edit-modules" class="exam-section-grid"></div>
+      </div>
+      <p id="exam-manage-delete-warning" hidden></p>
+      <p id="exam-manage-status" class="exam-form-status" role="status" aria-live="polite"></p>
+      <div class="exam-form-footer"><button type="submit" id="exam-manage-submit">保存修改</button></div>
+    </form>
+  </div>
+</dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=49"></script>
-<script src="js/demo-data.js?v=49"></script>
-<script src="js/store.js?v=49"></script>
-<script src="js/exams.js?v=49"></script>
-<script src="js/charts.js?v=49"></script>
-<script src="js/badges.js?v=49"></script>
-<script src="js/badges-ink.js?v=49"></script>
+<script src="js/config.js?v=50"></script>
+<script src="js/demo-data.js?v=50"></script>
+<script src="js/store.js?v=50"></script>
+<script src="js/exams.js?v=50"></script>
+<script src="js/charts.js?v=50"></script>
+<script src="js/badges.js?v=50"></script>
+<script src="js/badges-ink.js?v=50"></script>
 
-<script src="js/juice.js?v=49"></script>
-<script src="js/pomodoro.js?v=49"></script>
-<script src="js/app.js?v=49"></script>
+<script src="js/juice.js?v=50"></script>
+<script src="js/pomodoro.js?v=50"></script>
+<script src="js/app.js?v=50"></script>
 </body>
 </html>

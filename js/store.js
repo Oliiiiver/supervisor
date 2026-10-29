@@ -313,6 +313,35 @@ window.Store = (function () {
       await sb(db.from("mock_exams").insert(e), true);
     },
 
+    async updateExam(id, changes) {
+      const patch = {};
+      for (const key of ["date", "mode", "notes", "results", "changshi", "yanyu", "shuliang", "panduan", "ziliao"]) {
+        if (Object.prototype.hasOwnProperty.call(changes, key)) patch[key] = changes[key];
+      }
+      if (mode === "local") {
+        const index = cache.exams.findIndex(item => item.id === id);
+        if (index < 0) throw new Error("记录已不存在，请刷新后重试。");
+        const previous = cache.exams[index];
+        cache.exams[index] = Object.assign({}, previous, patch);
+        try { return save(); }
+        catch (error) { cache.exams[index] = previous; throw error; }
+      }
+      const rows = await sb(db.from("mock_exams").update(patch).eq("id", id).select("id"), true);
+      if (!rows.length) throw new Error("记录已不存在，请刷新后重试。");
+    },
+
+    async deleteExam(id) {
+      if (mode === "local") {
+        const index = cache.exams.findIndex(item => item.id === id);
+        if (index < 0) throw new Error("记录已不存在，请刷新后重试。");
+        const previous = cache.exams.splice(index, 1)[0];
+        try { return save(); }
+        catch (error) { cache.exams.splice(index, 0, previous); throw error; }
+      }
+      const rows = await sb(db.from("mock_exams").delete().eq("id", id).select("id"), true);
+      if (!rows.length) throw new Error("记录已不存在，请刷新后重试。");
+    },
+
     async updateExamReflection(id, text) {
       if (mode === "local") {
         const exam = cache.exams.find(item => item.id === id);
